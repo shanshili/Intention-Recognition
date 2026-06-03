@@ -1,0 +1,14 @@
+__pychche__/**
+.idea/**
+.venv/**
+dataset/**
+reference/** 
+*.memmap
+*.npz
+*.pth
+*.pkl
+.idea
+*.pdf
+*.svg
+pems_spatial_kmeans_topK/**
+data/**
