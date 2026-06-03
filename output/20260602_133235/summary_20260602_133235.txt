@@ -1,0 +1,6 @@
+Timestamp: 20260602_133235
+Correlation threshold: 0.999
+Window size: 24, Prediction steps: 6
+Test classification accuracy: 1.0000
+Prediction MSE: 0.020117, MAE: 0.099520
+Best model path: ./output\20260602_133235\best_model_20260602_133235.pth
