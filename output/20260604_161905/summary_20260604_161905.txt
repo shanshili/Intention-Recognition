@@ -1,0 +1,9 @@
+Timestamp: 20260604_161905
+Random Seed: 42
+Correlation threshold: 0.8
+Window size: 24, Prediction steps: 6
+Time-ordered split: train 1012, val 337, test 338
+Test classification accuracy: 0.8728
+Model Prediction - MSE: 0.062099, MAE: 0.183796
+Persistence Baseline - MSE: 1.046382, MAE: 0.731023
+Best model path: ./output\20260604_161905\best_model_20260604_161905.pth
