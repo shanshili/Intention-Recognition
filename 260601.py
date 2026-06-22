@@ -22,8 +22,18 @@ from sklearn.manifold import TSNE
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 import seaborn as sns
+import logging
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
+logger = logging.getLogger(__name__)
 
 # ========================= 用户配置区域 =========================
 DATA_DIR = "./pems_spatial_kmeans_topK"
@@ -49,16 +59,31 @@ print(f"输出目录: {OUTPUT_DIR}")
 
 # -------------------------- 1. 数据加载 --------------------------
 def load_node_coords(filepath):
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Node coordinate file not found: {filepath}")
     df = pd.read_csv(filepath)
-    # 列名兼容：假设有 node_id, x, y
+    required_cols = {'node_id', 'x', 'y'}
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(f"Node coordinate file missing columns: {missing}")
+    if df.empty:
+        raise ValueError(f"Node coordinate file is empty: {filepath}")
     node_ids = df['node_id'].values
     coords = df[['x', 'y']].values.astype(np.float32)
     return node_ids, coords
 
 def load_time_series(filepath):
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Time series file not found: {filepath}")
     df = pd.read_csv(filepath)
+    if df.empty:
+        raise ValueError(f"Time series file is empty: {filepath}")
     node_names = df.columns.tolist()
     data = df.values.T   # (N, T)
+    if np.isnan(data).any():
+        raise ValueError("Time series data contains NaN values")
+    if np.isinf(data).any():
+        raise ValueError("Time series data contains Inf values")
     return torch.FloatTensor(data), node_names
 
 def generate_time_labels(T, start_hour=0):
@@ -74,6 +99,9 @@ def generate_time_labels(T, start_hour=0):
 def build_correlation_graph(data, threshold=0.5):
     data_np = data.numpy()
     corr = np.corrcoef(data_np)
+    if np.isnan(corr).any():
+        logger.warning("NaN detected in correlation matrix (likely constant-value nodes); replacing with 0")
+        corr = np.nan_to_num(corr, nan=0.0)
     adj = (np.abs(corr) > threshold).astype(np.float32)
     np.fill_diagonal(adj, 0)
     adj = (adj + adj.T) > 0
@@ -306,7 +334,10 @@ def train_model(model, train_loader, val_loader, adj, epochs, lr, device, output
 def save_figure(fig, base_name, output_dir, dpi=600):
     for ext in ['png', 'svg', 'pdf']:
         filepath = os.path.join(output_dir, f"{base_name}_{TIMESTAMP}.{ext}")
-        fig.savefig(filepath, dpi=dpi, format=ext, bbox_inches='tight')
+        try:
+            fig.savefig(filepath, dpi=dpi, format=ext, bbox_inches='tight')
+        except OSError as e:
+            logger.error(f"Failed to save figure {filepath}: {e}")
     plt.close(fig)
 
 def plot_correlation_graph(adj, coords, node_ids, output_dir):
@@ -390,8 +421,12 @@ def plot_confusion_matrix(model, dataloader, adj, device, output_dir):
     ax.set_title('Confusion Matrix')
     save_figure(fig, "confusion_matrix", output_dir)
     report = classification_report(all_true, all_preds, target_names=['Flat', 'Morning Peak', 'Evening Peak'])
-    with open(os.path.join(output_dir, f"classification_report_{TIMESTAMP}.txt"), 'w') as f:
-        f.write(report)
+    report_path = os.path.join(output_dir, f"classification_report_{TIMESTAMP}.txt")
+    try:
+        with open(report_path, 'w') as f:
+            f.write(report)
+    except OSError as e:
+        logger.error(f"Failed to write classification report: {e}")
     print(report)
     return all_true, all_preds
 
@@ -427,6 +462,12 @@ def plot_predictions_multi_node(model, test_loader, adj, device, output_dir, nod
     axes[0].set_ylabel('Normalized Flow')
     axes[0].legend()
     # 随机选取几个样本
+    num_samples = min(num_samples, len(all_true))
+    if num_samples == 0:
+        logger.warning("No samples available for individual prediction plot")
+        plt.tight_layout()
+        save_figure(fig, "prediction_comparison", output_dir)
+        return
     indices = np.random.choice(len(all_true), num_samples, replace=False)
     for i, idx in enumerate(indices):
         axes[1].plot(range(PRED_LEN), all_true[idx], '--o', label=f'True {i+1}')
@@ -442,9 +483,13 @@ def compute_metrics(all_true, all_pred, output_dir):
     mse = mean_squared_error(all_true, all_pred)
     mae = mean_absolute_error(all_true, all_pred)
     print(f"Prediction Metrics on Test Set: MSE={mse:.6f}, MAE={mae:.6f}")
-    with open(os.path.join(output_dir, f"metrics_{TIMESTAMP}.txt"), 'w') as f:
-        f.write(f"Prediction MSE: {mse:.6f}\n")
-        f.write(f"Prediction MAE: {mae:.6f}\n")
+    metrics_path = os.path.join(output_dir, f"metrics_{TIMESTAMP}.txt")
+    try:
+        with open(metrics_path, 'w') as f:
+            f.write(f"Prediction MSE: {mse:.6f}\n")
+            f.write(f"Prediction MAE: {mae:.6f}\n")
+    except OSError as e:
+        logger.error(f"Failed to write metrics file: {e}")
     return mse, mae
 
 # -------------------------- 6. 主程序 --------------------------
@@ -478,9 +523,16 @@ def main():
     dataset = TrafficIntentDataset(data_raw, time_labels, target_node_idx,
                                    window=WINDOW_SIZE, pred_len=PRED_LEN, stride=3)
     total = len(dataset)
+    if total == 0:
+        raise ValueError("Dataset is empty; check WINDOW_SIZE, PRED_LEN, and data length")
     train_len = int(0.6 * total)
     val_len = int(0.2 * total)
     test_len = total - train_len - val_len
+    if train_len == 0 or val_len == 0 or test_len == 0:
+        raise ValueError(
+            f"Dataset too small for 60/20/20 split (total={total}): "
+            f"train={train_len}, val={val_len}, test={test_len}"
+        )
     train_ds, val_ds, test_ds = random_split(dataset, [train_len, val_len, test_len])
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE)
@@ -504,7 +556,13 @@ def main():
     )
 
     # 加载最佳模型用于测试
-    model.load_state_dict(torch.load(best_model_path, map_location=DEVICE))
+    if not os.path.isfile(best_model_path):
+        raise FileNotFoundError(f"Best model checkpoint not found: {best_model_path}")
+    try:
+        state_dict = torch.load(best_model_path, map_location=DEVICE, weights_only=True)
+        model.load_state_dict(state_dict)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load best model from {best_model_path}: {e}") from e
     model.eval()
 
     # 可视化损失曲线
@@ -540,14 +598,24 @@ def main():
     plot_predictions_multi_node(model, test_loader, adj_norm, DEVICE, OUTPUT_DIR, node_indices=[0], num_samples=3)
 
     # 保存关键指标到汇总文件
-    with open(os.path.join(OUTPUT_DIR, f"summary_{TIMESTAMP}.txt"), 'w') as f:
-        f.write(f"Timestamp: {TIMESTAMP}\n")
-        f.write(f"Correlation threshold: {CORR_THRESHOLD}\n")
-        f.write(f"Window size: {WINDOW_SIZE}, Prediction steps: {PRED_LEN}\n")
-        f.write(f"Test classification accuracy: {test_acc:.4f}\n")
-        f.write(f"Prediction MSE: {mse:.6f}, MAE: {mae:.6f}\n")
-        f.write(f"Best model path: {best_model_path}\n")
+    summary_path = os.path.join(OUTPUT_DIR, f"summary_{TIMESTAMP}.txt")
+    try:
+        with open(summary_path, 'w') as f:
+            f.write(f"Timestamp: {TIMESTAMP}\n")
+            f.write(f"Correlation threshold: {CORR_THRESHOLD}\n")
+            f.write(f"Window size: {WINDOW_SIZE}, Prediction steps: {PRED_LEN}\n")
+            f.write(f"Test classification accuracy: {test_acc:.4f}\n")
+            f.write(f"Prediction MSE: {mse:.6f}, MAE: {mae:.6f}\n")
+            f.write(f"Best model path: {best_model_path}\n")
+    except OSError as e:
+        logger.error(f"Failed to write summary file: {e}")
     print(f"所有结果已保存到: {OUTPUT_DIR}")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("Training interrupted by user")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}", exc_info=True)
+        raise
