@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 
-warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 # -------------------------- 全局随机种子 --------------------------
 SEED = 42
@@ -73,20 +73,25 @@ print(f"输出目录: {OUTPUT_DIR}")
 
 # -------------------------- 1. 数据加载 --------------------------
 def load_node_coords(filepath):
+    filepath = os.path.realpath(filepath)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Node coordinate file not found: {filepath}")
     df = pd.read_csv(filepath)
     node_ids = df["node_id"].values
     coords = df[["x", "y"]].values.astype(np.float32)
     return node_ids, coords
 
 def load_time_series(filepath):
+    filepath = os.path.realpath(filepath)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Time series file not found: {filepath}")
     df = pd.read_csv(filepath)
     node_names = df.columns.tolist()
     data = df.values.T  # (N, T)
-    # 新增: 检查NaN/Inf
     if np.isnan(data).any():
-        raise ValueError("时间序列含有NaN值")
+        raise ValueError("Time series data contains NaN values")
     if np.isinf(data).any():
-        raise ValueError("时间序列含有Inf值")
+        raise ValueError("Time series data contains Inf values")
     return torch.FloatTensor(data), node_names
 
 def build_correlation_graph(data, threshold=0.5):
@@ -683,7 +688,7 @@ def main():
     )
 
     # 加载最佳模型
-    model.load_state_dict(torch.load(best_model_path, map_location=DEVICE))
+    model.load_state_dict(torch.load(best_model_path, map_location=DEVICE, weights_only=True))
     model.eval()
 
     # 可视化损失
