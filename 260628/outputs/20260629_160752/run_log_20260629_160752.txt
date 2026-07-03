@@ -1,0 +1,27 @@
+[run] timestamp = 20260629_160752
+[run] output directory = ./outputs\20260629_160752
+[data] N=100 sensors, T=5088 hourly steps (212 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=3050 val=1017 test=1017
+[feat] building window features (train/val/test)...
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=10570
+[train] starting...
+  epoch   0  L_pred=0.2283  L_total=0.2289  val_MAE=0.1437
+  epoch   5  L_pred=0.0136  L_total=0.0136  val_MAE=0.1053
+  epoch  10  L_pred=0.0124  L_total=0.0124  val_MAE=0.0997
+  epoch  15  L_pred=0.0123  L_total=0.0123  val_MAE=0.0896
+  epoch  20  L_pred=0.0106  L_total=0.0106  val_MAE=0.0923
+  epoch  25  L_pred=0.0104  L_total=0.0104  val_MAE=0.0893
+  epoch  30  L_pred=0.0103  L_total=0.0103  val_MAE=0.0869
+  epoch  35  L_pred=0.0099  L_total=0.0099  val_MAE=0.0858
+  epoch  39  L_pred=0.0097  L_total=0.0097  val_MAE=0.0870
+[test] DEIG-TCN MAE=0.0887  persistence MAE=0.2582
+[ablation] {'full': 0.08871703796504778, 'mask_top': 0.08915061124703318, 'mask_random': 0.08869086050932125, 'mask_low': 0.0887170379650439}
+[viz] writing figures...
+[save] Intent graphs structure data saved to ./outputs\20260629_160752\intent_graphs_data_20260629_160752.npz
+[save] Model parameters saved to ./outputs\20260629_160752\model_params_20260629_160752.npz
+[save] Sensor time series plot saved to ./outputs\20260629_160752\sensor_timeseries_20260629_160752
+[save] Time series data saved to ./outputs\20260629_160752\timeseries_data_20260629_160752.csv
+[save] Sensor coordinates saved to ./outputs\20260629_160752\sensor_coords_20260629_160752.csv
+[save] Data specification saved to ./outputs\20260629_160752\data_spec_20260629_160752.json
+[done] outputs in ./outputs\20260629_160752

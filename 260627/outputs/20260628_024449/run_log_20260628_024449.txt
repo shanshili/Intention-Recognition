@@ -1,0 +1,25 @@
+[run] timestamp = 20260628_024449
+[run] output directory = ./outputs\20260628_024449
+[data] N=100 sensors, T=5088 hourly steps (212 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=3051 val=1017 test=1017
+[feat] building window features (train/val/test)...
+[train] starting...
+  epoch   0  L_pred=0.0329  L_total=0.0333  val_MAE=0.1305
+  epoch   5  L_pred=0.0134  L_total=0.0134  val_MAE=0.1022
+  epoch  10  L_pred=0.0129  L_total=0.0129  val_MAE=0.1038
+  epoch  15  L_pred=0.0121  L_total=0.0121  val_MAE=0.0990
+  epoch  20  L_pred=0.0116  L_total=0.0116  val_MAE=0.0978
+  epoch  25  L_pred=0.0114  L_total=0.0115  val_MAE=0.0946
+  epoch  30  L_pred=0.0111  L_total=0.0111  val_MAE=0.0932
+  epoch  35  L_pred=0.0113  L_total=0.0113  val_MAE=0.0895
+  epoch  39  L_pred=0.0107  L_total=0.0107  val_MAE=0.0898
+[test] DEIG-TCN MAE=0.0916  persistence MAE=0.2582
+[ablation] {'full': 0.09157124383997232, 'mask_top': 0.09444120913349457, 'mask_random': 0.09183734918752766, 'mask_low': 0.09168169048729714}
+[viz] writing figures...
+[save] Model parameters saved to ./outputs\20260628_024449\model_params_20260628_024449.npz
+[save] Sensor time series plot saved to ./outputs\20260628_024449\sensor_timeseries_20260628_024449
+[save] Time series data saved to ./outputs\20260628_024449\timeseries_data_20260628_024449.csv
+[save] Sensor coordinates saved to ./outputs\20260628_024449\sensor_coords_20260628_024449.csv
+[save] Data specification saved to ./outputs\20260628_024449\data_spec_20260628_024449.json
+[done] outputs in ./outputs\20260628_024449

@@ -115,7 +115,7 @@ def main():
     data = load_csv(flow_csv, coord_csv)
 
     # 真实数据集下，窗口和训练轮次需根据数据规模重新设定
-    W, H, stride, epochs = 24, 6, 6, args.epochs
+    W, H, stride, epochs = 3, 1, 1, args.epochs
     N, T = data.X.shape
 
     print(f"[data] N={N} sensors, T={T} hourly steps "
@@ -207,7 +207,7 @@ def main():
     print(f"[ablation] {abl}")
 
     # ---------------- 10 consecutive test windows ----------------
-    n_show = 10
+    n_show = 97
     if len(te_t) >= n_show:
         show_t = te_t[:n_show]
         show_in = te_in[:n_show]

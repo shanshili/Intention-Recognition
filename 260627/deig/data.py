@@ -191,8 +191,9 @@ class Preprocessor:
         # 4. per-node standardisation with train mean/std
         mu = X[:, : self.train_end].mean(axis=1, keepdims=True)
         sd = X[:, : self.train_end].std(axis=1, keepdims=True) + self.eps
-        Z = (X - mu) / sd
+        # Z = (X - mu) / sd
         self.mu, self.sd = mu, sd
+        Z = X.copy()
 
         # 5. first difference
         dZ = np.zeros_like(Z)

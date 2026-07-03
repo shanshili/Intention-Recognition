@@ -1,0 +1,11 @@
+{
+  "timestamp": "20260629_160752",
+  "N_sensors": 100,
+  "T_timesteps": 5088,
+  "days": 212.0,
+  "W_window_size": 4,
+  "H_horizon": 1,
+  "stride": 1,
+  "true_chains_count": 0,
+  "quick_mode": false
+}
