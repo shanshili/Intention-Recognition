@@ -2,7 +2,6 @@ import cv2
 import os
 import glob
 import time
-import numpy as np
 
 # 设置图像文件所在的目录
 image_dir = './outputs/20260628_162448'  # 替换为你的图像文件所在目录
@@ -24,13 +23,13 @@ height, width, layers = first_frame.shape
 crop_width = width - 100  # 假设裁剪掉右侧100像素，你可以根据实际情况调整
 
 # 计算所需的帧率：每张图片显示0.5秒，意味着每秒2帧
-fps = 6.0  # 每秒2帧，这样每张图片会显示0.5秒
+fps = 2.0  # 每秒2帧，这样每张图片会显示0.5秒
 
 # 设置视频编码器和输出文件
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-output_video = 'output_video.avi'
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+output_video = 'output_video.mp4'
 
-# 创建视频写入对象
+# 创建视频写入对象，使用裁剪后的真实尺寸 (width, height)
 out = cv2.VideoWriter(output_video, fourcc, fps, (crop_width, height))
 
 # 将所有图像写入视频
@@ -49,9 +48,8 @@ for image in images:
             print(f"警告: 图像 {image} 裁剪后尺寸不一致，跳过")
             continue
 
-        # 每张图片写入2次（因为fps=2，所以每张图片会显示0.5秒）
-        for _ in range(2):
-            out.write(cropped_frame)
+        # 每张图片写入1次（因为fps=2，所以每张图片会显示0.5秒）
+        out.write(cropped_frame)
     except Exception as e:
         print(f"处理图像 {image} 时发生错误: {str(e)}")
 
