@@ -23,7 +23,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=FutureWarning)
 
 # ========================= 用户配置区域 =========================
 DATA_DIR = "./pems_spatial_kmeans_topK"
@@ -49,6 +49,9 @@ print(f"输出目录: {OUTPUT_DIR}")
 
 # -------------------------- 1. 数据加载 --------------------------
 def load_node_coords(filepath):
+    filepath = os.path.realpath(filepath)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Node coordinate file not found: {filepath}")
     df = pd.read_csv(filepath)
     # 列名兼容：假设有 node_id, x, y
     node_ids = df['node_id'].values
@@ -56,9 +59,16 @@ def load_node_coords(filepath):
     return node_ids, coords
 
 def load_time_series(filepath):
+    filepath = os.path.realpath(filepath)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"Time series file not found: {filepath}")
     df = pd.read_csv(filepath)
     node_names = df.columns.tolist()
     data = df.values.T   # (N, T)
+    if np.isnan(data).any():
+        raise ValueError("Time series data contains NaN values")
+    if np.isinf(data).any():
+        raise ValueError("Time series data contains Inf values")
     return torch.FloatTensor(data), node_names
 
 def generate_time_labels(T, start_hour=0):
@@ -504,7 +514,7 @@ def main():
     )
 
     # 加载最佳模型用于测试
-    model.load_state_dict(torch.load(best_model_path, map_location=DEVICE))
+    model.load_state_dict(torch.load(best_model_path, map_location=DEVICE, weights_only=True))
     model.eval()
 
     # 可视化损失曲线
