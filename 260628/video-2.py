@@ -4,7 +4,7 @@ import glob
 import time
 
 # 设置图像文件所在的目录
-image_dir = './outputs/20260628_162448'  # 替换为你的图像文件所在目录
+image_dir = './outputs/20260703_192855_1week'  # 替换为你的图像文件所在目录
 
 # 获取所有图像文件并按名称排序
 images = glob.glob(os.path.join(image_dir, 'intent_graph_window_*.png'))  # 根据实际格式修改扩展名

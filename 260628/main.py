@@ -213,7 +213,7 @@ def main():
     print(f"[ablation] {abl}")
 
     # ---------------- 10 consecutive test windows ----------------
-    n_show = 97
+    n_show = 170
     if len(te_t) >= n_show:
         show_t = te_t[:n_show]
         show_in = te_in[:n_show]
