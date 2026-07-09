@@ -20,6 +20,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FuncFormatter
+import numpy as np
+import matplotlib.colors as mcolors  # 文件顶部加这个 import
 
 # ---------------------------------------------------------------------------
 # 时间步 <-> 真实时间的换算
@@ -187,36 +189,162 @@ def plot_loss_curve(history: Dict, paths, base="loss_curve"):
     return paths.save_figure(fig, paths.figures, base)
 
 
+# def plot_fused_visualization(S_D: np.ndarray, node_scores: np.ndarray,
+#                              coords: np.ndarray, paths, base="fused_SD", dt_str=None):
+#     r"""S_D 的热力图 + 坐标上的有向融合网络（边用 Reds 色条）。"""
+#     _apply_rc()
+#     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+#     im = axes[0].imshow(S_D, cmap="viridis", aspect="auto")
+#     axes[0].set_title("Fused edge score matrix  $S_D^t$", fontsize=_TITLE_FS)
+#     axes[0].set_xlabel("dst node", fontsize=_LABEL_FS)
+#     axes[0].set_ylabel("src node", fontsize=_LABEL_FS)
+#     cb0 = fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+#     cb0.ax.tick_params(labelsize=_TICK_FS)
+#
+#     q = _quiver_directed(axes[1], S_D, coords, cmap=_EDGE_CMAP, alpha=0.85)
+#     if q is not None:
+#         cbq = fig.colorbar(q, ax=axes[1], fraction=0.046, pad=0.04)
+#         cbq.set_label("edge score", fontsize=_LABEL_FS)
+#         cbq.ax.tick_params(labelsize=_TICK_FS)
+#     sc = node_scores
+#     sizes = 100 + 200 * (sc - sc.min()) / (sc.max() - sc.min() + _EPS)
+#     edge_deg = S_D.sum(0) + S_D.sum(1)
+#     active = (edge_deg > _EPS) | (sc > sc.min() + _EPS)
+#     ncolor = np.where(active, "#e63946", "#cccccc")
+#     axes[1].scatter(coords[:, 0], coords[:, 1], s=sizes, c=ncolor,
+#                     edgecolors="white", linewidths=0.6, zorder=2)
+#     _label_active_nodes(axes[1], coords, active)
+#     dt_label = f", time: {dt_str}" if dt_str else ""
+#     _frame(axes[1], coords,
+#            f"Fused deployment graph (directed; node score = $Score_i^t$){dt_label}")
+#     fig.tight_layout()
+#     return paths.save_figure(fig, paths.figures, base)
+
+# def plot_fused_visualization(S_D: np.ndarray, node_scores: np.ndarray,
+#                              coords: np.ndarray, paths, base="fused_SD",
+#                              dt_str=None, edge_quantile=0.0):
+#     r"""左：S_D 热力图；右：以边融合分数为中心的有向网络。
+#
+#     右图完全由 S_D 驱动：
+#       - 边颜色 = S_D[i,j]（Reds，越红分数越高）；
+#       - 节点大小/高亮 = 该节点关联的边分数之和（edge strength）；
+#       - edge_quantile>0 时，仅绘制分数在该分位以上的高分边。
+#     node_scores 仅用于可选参考，不再决定节点显示。
+#     """
+#     _apply_rc()
+#     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+#
+#     # ---- 左：融合边分数矩阵热力图（不变）----
+#     im = axes[0].imshow(S_D, cmap="viridis", aspect="auto")
+#     axes[0].set_title("Fused edge score matrix  $S_D^t$", fontsize=_TITLE_FS)
+#     axes[0].set_xlabel("dst node", fontsize=_LABEL_FS)
+#     axes[0].set_ylabel("src node", fontsize=_LABEL_FS)
+#     cb0 = fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+#     cb0.ax.tick_params(labelsize=_TICK_FS)
+#
+#     # ---- 右：以边融合分数为中心的有向图 ----
+#     S_draw = S_D.copy()
+#     # 可选：只保留高分边（按非零边分数的分位数阈值）
+#     if edge_quantile and edge_quantile > 0.0:
+#         nz = S_draw[S_draw > 0]
+#         if nz.size > 0:
+#             thr = np.quantile(nz, edge_quantile)
+#             S_draw = np.where(S_draw >= thr, S_draw, 0.0)
+#
+#     q = _quiver_directed(axes[1], S_draw, coords, cmap=_EDGE_CMAP, alpha=0.85)
+#     if q is not None:
+#         cbq = fig.colorbar(q, ax=axes[1], fraction=0.046, pad=0.04)
+#         cbq.set_label("edge score $S_D^t[i,j]$", fontsize=_LABEL_FS)
+#         cbq.ax.tick_params(labelsize=_TICK_FS)
+#
+#     # 节点大小 / 高亮：均由"关联边分数之和"决定（edge-centric）
+#     edge_strength = S_draw.sum(0) + S_draw.sum(1)          # 每节点入+出边分数
+#     smax = edge_strength.max()
+#     sizes = 100 + 300 * (edge_strength / (smax + _EPS))    # 分数越高点越大
+#     active = edge_strength > _EPS                          # 有高分边相连才高亮
+#     ncolor = np.where(active, "#e63946", "#cccccc")
+#
+#     axes[1].scatter(coords[:, 0], coords[:, 1], s=sizes, c=ncolor,
+#                     edgecolors="white", linewidths=0.6, zorder=2)
+#     _label_active_nodes(axes[1], coords, active)
+#     dt_label = f", time: {dt_str}" if dt_str else ""
+#     _frame(axes[1], coords,
+#            f"Fused deployment graph (directed; edge/node = $S_D^t$ strength)"
+#            f"{dt_label}")
+#     fig.tight_layout()
+#     return paths.save_figure(fig, paths.figures, base)
+
 def plot_fused_visualization(S_D: np.ndarray, node_scores: np.ndarray,
-                             coords: np.ndarray, paths, base="fused_SD", dt_str=None):
-    r"""S_D 的热力图 + 坐标上的有向融合网络（边用 Reds 色条）。"""
+                             coords: np.ndarray, paths, base="fused_SD",
+                             dt_str=None, edge_quantile=0.0,
+                             heatmap_scale="log", mask_zeros=True):
+    r"""左：S_D 热力图（可选非零掩码 + 对数着色）；右：以边分数为中心的网络。
+
+    heatmap_scale: "log" 用对数着色压缩动态范围突出高分边；"linear" 用线性。
+    mask_zeros:    True 时把 S_D==0 设为背景色（不参与配色），只给真实边上色。
+    """
     _apply_rc()
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
-    im = axes[0].imshow(S_D, cmap="viridis", aspect="auto")
-    axes[0].set_title("Fused edge score matrix  $S_D^t$", fontsize=_TITLE_FS)
+
+    # ---- 左：融合边分数矩阵热力图 ----
+    cmap = plt.cm.get_cmap("viridis").copy()
+    cmap.set_bad(color="#f0f0f0")          # 被掩码的 0 元素显示为浅灰背景
+
+    S_plot = S_D.astype(float).copy()
+    nz = S_plot[S_plot > 0]
+
+    if mask_zeros:                          # 把 0（无边）掩掉，不参与配色
+        S_plot = np.ma.masked_less_equal(S_plot, 0.0)
+
+    if heatmap_scale == "log" and nz.size > 0:
+        vmin = float(nz.min())
+        vmax = float(nz.max())
+        norm = mcolors.LogNorm(vmin=vmin, vmax=max(vmax, vmin * (1 + _EPS)))
+    else:
+        norm = mcolors.Normalize(vmin=0.0,
+                                 vmax=float(nz.max()) if nz.size > 0 else 1.0)
+
+    im = axes[0].imshow(S_plot, cmap=cmap, norm=norm, aspect="auto")
+    scale_tag = "log" if heatmap_scale == "log" else "linear"
+    axes[0].set_title(f"Fused edge score matrix  $S_D^t$  ({scale_tag})",
+                      fontsize=_TITLE_FS)
     axes[0].set_xlabel("dst node", fontsize=_LABEL_FS)
     axes[0].set_ylabel("src node", fontsize=_LABEL_FS)
     cb0 = fig.colorbar(im, ax=axes[0], fraction=0.046, pad=0.04)
+    cb0.set_label("edge score $S_D^t[i,j]$", fontsize=_LABEL_FS)
     cb0.ax.tick_params(labelsize=_TICK_FS)
 
-    q = _quiver_directed(axes[1], S_D, coords, cmap=_EDGE_CMAP, alpha=0.85)
+    # ---- 右：以边融合分数为中心的有向图（同上一版）----
+    S_draw = S_D.copy()
+    if edge_quantile and edge_quantile > 0.0:
+        nzd = S_draw[S_draw > 0]
+        if nzd.size > 0:
+            thr = np.quantile(nzd, edge_quantile)
+            S_draw = np.where(S_draw >= thr, S_draw, 0.0)
+
+    q = _quiver_directed(axes[1], S_draw, coords, cmap=_EDGE_CMAP, alpha=0.85)
     if q is not None:
         cbq = fig.colorbar(q, ax=axes[1], fraction=0.046, pad=0.04)
-        cbq.set_label("edge score", fontsize=_LABEL_FS)
+        cbq.set_label("edge score $S_D^t[i,j]$", fontsize=_LABEL_FS)
         cbq.ax.tick_params(labelsize=_TICK_FS)
-    sc = node_scores
-    sizes = 100 + 200 * (sc - sc.min()) / (sc.max() - sc.min() + _EPS)
-    edge_deg = S_D.sum(0) + S_D.sum(1)
-    active = (edge_deg > _EPS) | (sc > sc.min() + _EPS)
+
+    edge_strength = S_draw.sum(0) + S_draw.sum(1)
+    smax = float(edge_strength.max())
+    sizes = 100 + 3000 * (edge_strength / (smax + _EPS))
+    # 相对阈值：强度达到全局最大的某个很小比例即算活跃
+    active = edge_strength > 1e-6 * smax  # 关键：相对 smax，而非绝对 _EPS
     ncolor = np.where(active, "#e63946", "#cccccc")
+
     axes[1].scatter(coords[:, 0], coords[:, 1], s=sizes, c=ncolor,
                     edgecolors="white", linewidths=0.6, zorder=2)
     _label_active_nodes(axes[1], coords, active)
     dt_label = f", time: {dt_str}" if dt_str else ""
     _frame(axes[1], coords,
-           f"Fused deployment graph (directed; node score = $Score_i^t$){dt_label}")
+           f"Fused deployment graph (directed; edge/node = $S_D^t$ strength)"
+           f"{dt_label}")
     fig.tight_layout()
     return paths.save_figure(fig, paths.figures, base)
+
 
 
 def plot_deployment_subgraph(deploy: Dict, coords: np.ndarray,

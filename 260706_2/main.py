@@ -222,7 +222,7 @@ def build_argparser():
                    help="可选的初始特征文件（.npy/.csv）")
     p.add_argument("--epochs", type=int, default=40)
     p.add_argument("--device", default=None, choices=["cuda", "cpu"])
-    p.add_argument("--show-steps", type=int, default=2,
+    p.add_argument("--show-steps", type=int, default=192,
                    help="要导出的时间步数 t（默认 97）")
     p.add_argument("--gnn", default=None, choices=["gcn", "gat", "sage"])
     p.add_argument("--strict-data", action="store_true",
