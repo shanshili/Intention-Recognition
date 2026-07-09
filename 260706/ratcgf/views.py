@@ -1,19 +1,16 @@
 """
-views.py  --  Module 1: Residual-aware causal-intent multi-view construction
+views.py  --  模块 1：残差感知因果意图多视图构建
 ===========================================================================
 
-Given the normalised causal adjacency \tilde A_C and the per-step normalised
-intent adjacencies \tilde A_I^t, this module builds, for a time step t, the
-candidate view set
+给定归一化的因果邻接矩阵 \tilde A_C 和每步归一化的意图邻接矩阵
+\tilde A_I^t，此模块为时间步 t 构建候选视图集
 
     M = { C, I, CI, R (=R_I), CmI (=R_C), P, N }
 
-plus the fade view A_E (used only as a gating feature), the global structural
-statistics vector q_struct^t (9-d), the per-node local statistics (5-d) and the
-per-edge feature stack b_ij (8-d).
+以及消退视图 A_E（仅用作门控特征）、全局结构统计向量 q_struct^t (9维)、
+逐节点局部统计 (5维) 和逐边特征栈 b_ij (8维)。
 
-All quantities here are *constants* w.r.t. the learnable parameters; they enter
-the autograd graph as fixed tensors.
+此处的所有量相对于可学习参数都是*常数*；它们作为固定张量进入自动求导图。
 """
 
 from __future__ import annotations
@@ -34,7 +31,7 @@ def jaccard(A, B, eps=1e-9):
 
 
 class ViewBuilder:
-    """Constructs all Module-1 artefacts from the normalised adjacencies."""
+    """构建时间步 t 的候选视图集"""
 
     def __init__(self, cfg, A_C_norm, A_I_norm_stack):
         self.cfg = cfg
@@ -50,7 +47,7 @@ class ViewBuilder:
         return self.A_I[t]
 
     def build(self, t):
-        """Return a dict with every Module-1 artefact for time step t."""
+        """构建时间步 t 的候选视图集"""
         cfg = self.cfg
         AC = self.A_C
         AIt = self._AI(t)
@@ -99,7 +96,7 @@ class ViewBuilder:
 
     # ------------------------------------------------------------------ #
     def _node_stats(self, AC, AIt, AIp, views):
-        """Per-node local structural statistics over each node's ego edges."""
+        """每个节点的自我边上的局部结构统计。"""
         eps = 1e-9
         N = AC.shape[0]
 
@@ -129,7 +126,7 @@ class ViewBuilder:
 
 
 def edge_features(view_dict, A_E, i, j):
-    """Assemble the 8-d edge feature b_ij for a single edge."""
+    """为单条边组合 8 维边特征 b_ij。"""
     v = view_dict
     return np.array([
         v["C"][i, j], v["I"][i, j], v["CI"][i, j], v["R"][i, j],
@@ -139,8 +136,8 @@ def edge_features(view_dict, A_E, i, j):
 
 def candidate_edges(view_dict, max_edges=None):
     """
-    Union of edges present in any deploy view -> candidate deployment edges.
-    Returns an int array [E, 2] of (i, j) with i = target row, j = source col.
+    存在于任何部署视图中的边并集 -> 候选部署边。
+    返回形状为 [E, 2] 的整型数组，其中 i = 源行, j = 目标列。
     """
     support = np.zeros_like(view_dict["C"])
     for key in ("C", "I", "CI", "R", "CmI", "P", "N"):

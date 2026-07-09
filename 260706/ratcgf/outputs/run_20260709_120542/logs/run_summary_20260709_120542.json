@@ -1,0 +1,32 @@
+{
+  "output_dir": "outputs\\run_20260709_120542",
+  "N": 100,
+  "n_show": 170,
+  "valid_centers": 168,
+  "used_synthetic": {
+    "flow": false,
+    "coords": false,
+    "causal": false,
+    "intent": false,
+    "node_feat": false
+  },
+  "best_val": 0.6233729952398468,
+  "deploy": {
+    "num_nodes": 18,
+    "num_edges": 8,
+    "cost": 19.599999999999994,
+    "u_track": 0.470957613663094,
+    "u_elastic": 0.0
+  },
+  "views_exported_steps": 97,
+  "view_folders": [
+    "consensus",
+    "intent_residual",
+    "causal_inactive",
+    "intent_persist",
+    "intent_new",
+    "intent_decay"
+  ],
+  "input_graph_step": 168,
+  "model_path": "outputs\\run_20260709_120542\\models\\ratcgf_model_20260709_120542.pt"
+}

@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
-r"""Punto de entrada del pipeline RA-TCGF.
+r"""RA-TCGF 流程的入口点。
 
-Ejecuta: carga de datos -> entrenamiento -> guardado del modelo ->
-inferencia de S_D^t -> subgrafo de despliegue G_D^t -> todas las figuras ->
-exportacion de las 6 vistas para los pasos t seleccionados.
+执行：数据加载 -> 训练 -> 保存模型 ->
+推断 S_D^t -> 部署子图 G_D^t -> 所有图表 ->
+导出所选时间步的 6 个视图。
 
-Figuras de grafo (entrada + vistas del paso objetivo) en estilo dirigido
-"PCMCI MultiDiGraph" (viz_causal_style). El volcado masivo de 95 pasos usa el
-camino rapido con `quiver` de visualize.export_97_views.
+图（输入 + 目标步的视图）采用 "PCMCI MultiDiGraph" 有向样式
+(viz_causal_style)。95 步的大批量导出使用 visualize.export_97_views 中
+带 `quiver` 的快速路径。
 
-Uso:
+用法：
     python -m ratcgf.main
-    python main.py --data-dir <ruta> --strict-data      # exige datos reales
+    python main.py --data-dir <ruta> --strict-data      # 要求真实数据
 """
+
 if __name__ == "__main__" and __package__ in (None, ""):
     import os as _os
     import sys as _sys
@@ -51,7 +52,7 @@ def pick_device(pref: str) -> torch.device:
 
 
 def elastic_utility(model, sample, S_D, dep_cfg, device):
-    r"""U_elastic^t: robustez de S_D ante fallos aleatorios de aristas."""
+    r"""U_elastic^t：S_D 在随机边故障下的鲁棒性。"""
     base = float(S_D.sum().item())
     if base < 1e-8:
         return 0.0
@@ -70,10 +71,10 @@ def elastic_utility(model, sample, S_D, dep_cfg, device):
 
 
 def _resolve_causal_dict(cfg, bundle):
-    r"""Dict causal completo (con signo/lag) para dibujar G_C.
+    r"""用于绘制 G_C 的完整因果字典（带符号/滞后）。
 
-    - .pkl real presente  -> se recarga (conserva val_matrix con signo + lag).
-    - sintetico           -> se envuelve A_C en un dict compatible de 1 lag.
+    - 存在真实 .pkl -> 重新加载（保留带符号的 val_matrix + 滞后）。
+    - 合成           -> 将 A_C 包装在兼容的 1 滞后字典中。
     """
     if os.path.exists(cfg.causal_path()):
         return load_causal(cfg.causal_path())
@@ -84,12 +85,16 @@ def _resolve_causal_dict(cfg, bundle):
 
 
 def run(cfg: Config, args):
+    import matplotlib as mpl
+    mpl.rcParams['font.family'] = 'Times New Roman'
+    mpl.rcParams['axes.unicode_minus'] = False
+
     set_seed(cfg.train.seed)
     device = pick_device(cfg.train.device)
     paths = RunPaths(cfg.out_root)
     print(f"[run] dispositivo={device}  salida={paths.root}")
 
-    # --- 1. carga de datos ---
+    # --- 1. 数据加载 ---
     bundle = load_all(cfg)
     print(f"[data] N={bundle['N']}  n_show={len(bundle['A_I_list'])}")
     print(f"[data] dims por fichero={bundle['node_dims']}  "
@@ -99,15 +104,15 @@ def run(cfg: Config, args):
     cfg._in_dim = builder.in_dim()
     print(f"[data] ventanas validas={len(builder.valid_centers)}  F={cfg._in_dim}")
 
-    # --- 2. modelo + entrenamiento ---
+    # --- 2. 模型 + 训练 ---=
     model = RATCGF(cfg)
     model, result = train_model(model, builder, cfg, device)
 
-    # --- 3. guardar modelo entrenado (con timestamp) ---
+    # --- 3. 保存训练模型（带时间戳） ---
     model_path = save_model(model, cfg, result, paths)
     print(f"[save] modelo -> {model_path}")
 
-    # --- 4. inferencia en el paso mas reciente ---
+    # --- 4. 最近一步的推断 ---
     centers = builder.valid_centers
     target_c = centers[-1]
     sample = builder.build(target_c)
@@ -117,7 +122,7 @@ def run(cfg: Config, args):
     S_D = out["S_D"].detach().cpu().numpy()
     nscore = out["node_scores"].detach().cpu().numpy()
 
-    # --- 5. subgrafo de despliegue G_D^t ---
+    # --- 5. 部署子图 G_D^t ---
     A_I_cur = sample["A_I_cur"].detach().cpu().numpy()
     A_P = out["views"]["P"].detach().cpu().numpy()
     deploy = greedy_deploy(S_D, nscore, A_I_cur, A_P, cfg.deploy)
@@ -127,7 +132,7 @@ def run(cfg: Config, args):
           f"coste={deploy['cost']:.2f} U_track={deploy['u_track']:.3f} "
           f"U_elastic={u_el:.3f}")
 
-    # --- 6. guardar arrays ---
+    # --- 6. 保存数组 ---
     arr_path = paths.array_file("SD_and_deploy", "npz")
     np.savez(arr_path, S_D=S_D, node_scores=nscore,
              deploy_nodes=np.array(deploy["nodes"]),
@@ -135,26 +140,28 @@ def run(cfg: Config, args):
              A_dep=deploy["A_dep"], target_center=target_c)
     print(f"[save] arrays -> {arr_path}")
 
-    # --- 7. figuras principales (loss / fused / deployment) ---
+    # --- 7. 主要图表 (loss / fused / deployment) ---
+    # 生成时间字符串用于图表标题
+    dt_str = f"2025-01-01 {int(target_c)//4:02d}:{(int(target_c)%4)*15:02d}"
     coords = builder.coords
     viz.plot_loss_curve(result["history"], paths)
-    viz.plot_fused_visualization(S_D, nscore, coords, paths)
-    viz.plot_deployment_subgraph(deploy, coords, paths)
+    viz.plot_fused_visualization(S_D, nscore, coords, paths, dt_str=dt_str)
+    viz.plot_deployment_subgraph(deploy, coords, paths, dt_str=dt_str)
     print("[fig] loss / fused / deployment guardadas")
 
-    # --- 7b. grafos de ENTRADA (estilo dirigido PCMCI de referencia) ---
-    #   Reales si los .pkl/.npz existen; sinteticos en caso contrario.
+    # --- 7b. 输入图（参考 PCMCI 有向样式） ---
+    #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
     causal = _resolve_causal_dict(cfg, bundle)
     A_I_draw = bundle["A_I_list"][target_c]
     delta_list = bundle.get("delta_list")
     delta = (float(delta_list[target_c])
              if delta_list is not None and len(delta_list) > target_c else None)
-    vcs.plot_input_causal(causal, coords, paths)
-    vcs.plot_input_intent(A_I_draw, coords, paths, step=int(target_c), delta=delta)
+    vcs.plot_input_causal(causal, coords, paths, dt_str=dt_str)
+    vcs.plot_input_intent(A_I_draw, coords, paths, step=int(target_c), delta=delta, dt_str=dt_str)
     src_tag = "reales" if not bundle["used_synthetic"]["causal"] else "sinteticos"
     print(f"[fig] grafos de entrada (causal+intencion, {src_tag}) guardados")
 
-    # --- 7c. las 6 vistas derivadas del paso objetivo, en estilo referencia ---
+    #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
     views_np = {k: v.detach().cpu().numpy() for k, v in out["views"].items()}
     views_np["E"] = out["decay"].detach().cpu().numpy()
     ref_dir = os.path.join(paths.figures, "views_target_ref")
@@ -164,14 +171,14 @@ def run(cfg: Config, args):
             views_np[key], coords, paths,
             base=f"view_ref_{folder}_c{target_c}",
             title=f"{title}  (step t=c{target_c})",
-            directory=ref_dir)
+            directory=ref_dir, dt_str=dt_str)
     print(f"[fig] 6 vistas del paso objetivo (estilo dirigido) -> {ref_dir}")
 
-    # --- 8. volcado masivo de las 6 vistas para todos los pasos (quiver) ---
+    # --- 8. 所有序步的 6 个视图大批量导出 ---
     manifest = viz.export_97_views(model, builder, centers, coords,
                                    paths, cfg, device)
 
-    # --- 9. log final ---
+    # --- 9. 最终日志 ---
     paths.dump_json({
         "output_dir": paths.root,
         "N": bundle["N"], "n_show": len(bundle["A_I_list"]),

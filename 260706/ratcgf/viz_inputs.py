@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-r"""Visualizacion de los GRAFOS DE ENTRADA (no las vistas derivadas).
+"""输入图的可视化（非派生视图）。
 
-Dibuja:
-  - Grafo causal G_C  (dirigido, ponderado y con SIGNO tomado de val_matrix),
-    respetando su naturaleza de subgrafo con mask_threshold=0.5 y top_nodes.
-  - Grafo de intencion G_I^t (dirigido y ponderado por la intensidad s_ij).
+绘制：
+  - 因果图 G_C（有向、加权且带有取自 val_matrix 的符号），
+    遵循其作为 mask_threshold=0.5 和 top_nodes 子图的性质。
+  - 意图图 G_I^t（有向且按强度 s_ij 加权）。
 
-Uso:
-    python -m ratcgf.viz_inputs                 # dibuja ambos (paso por defecto)
+用法：
+    python -m ratcgf.viz_inputs                 # 绘制两者（默认步）
     python -m ratcgf.viz_inputs --intent-step 50
 """
+
 import argparse
 
 import numpy as np
@@ -26,13 +27,13 @@ from .utils.data_loading import (
 
 
 # ---------------------------------------------------------------------------
-# Construccion de la matriz causal CON SIGNO (para colorear + / -)
+# 构造带符号的因果矩阵（用于着色 + / -）
 # ---------------------------------------------------------------------------
 def causal_signed_matrix(causal: dict) -> np.ndarray:
-    r"""[N,N] con el valor con signo de la arista causal i-->j.
+    r"""[N,N] 带有因果边 i-->j 符号值的矩阵。
 
-    Para cada (i,j) se toma el lag tau con |val| maximo entre los que tienen
-    graph[i,j,tau]=='-->', conservando el SIGNO del coeficiente.
+    对于每个 (i,j)，取在 graph[i,j,tau]=='-->' 的边中 |val| 最大的滞后 tau，
+    并保留系数的符号。
     """
     graph = np.asarray(causal["graph"])
     val = np.asarray(causal["val_matrix"], dtype=float)
@@ -51,13 +52,13 @@ def causal_signed_matrix(causal: dict) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Dibujo generico de grafo DIRIGIDO y PONDERADO sobre coordenadas
+# 基于坐标的有向加权图通用绘制
 # ---------------------------------------------------------------------------
 def draw_directed_weighted(ax, W: np.ndarray, coords: np.ndarray, title: str,
                            node_scores=None, highlight=None,
-                           signed=False, pos_color="#1d4e89",
-                           neg_color="#c1121f", uni_color="#2a9d8f"):
-    """W[i,j]!=0 -> arista dirigida i->j. Grosor ~ |peso|; color por signo."""
+                           signed=False, pos_color="#e63946",
+                           neg_color="#457b9d", uni_color="#e63946"):
+    """W[i,j]!=0 -> 有向边 i->j。线宽 ~ |权重|；颜色按符号。"""
     N = W.shape[0]
     pos = {i: (float(coords[i, 0]), float(coords[i, 1])) for i in range(N)}
 
@@ -67,7 +68,7 @@ def draw_directed_weighted(ax, W: np.ndarray, coords: np.ndarray, title: str,
     for i, j in zip(ii.tolist(), jj.tolist()):
         G.add_edge(i, j, w=float(W[i, j]))
 
-    # tamano de nodo: por node_scores si se da, si no por grado ponderado
+
     if node_scores is not None:
         ns = np.asarray(node_scores, dtype=float)
     else:
@@ -75,7 +76,7 @@ def draw_directed_weighted(ax, W: np.ndarray, coords: np.ndarray, title: str,
     rng = ns.max() - ns.min()
     sizes = 25 + 130 * (ns - ns.min()) / (rng + 1e-8)
 
-    # aristas
+
     if G.number_of_edges() > 0:
         w = np.array([abs(d["w"]) for *_, d in G.edges(data=True)])
         wmax = w.max() + 1e-8
@@ -90,30 +91,38 @@ def draw_directed_weighted(ax, W: np.ndarray, coords: np.ndarray, title: str,
             arrows=True, arrowstyle="-|>", arrowsize=9,
             connectionstyle="arc3,rad=0.08", alpha=0.6, node_size=sizes)
 
-    # nodos (resalta highlight si se da)
+    # 节点：选中(有边)标红白框，未选中灰色
+    active_nodes = set()
+    for u, v in G.edges():
+        active_nodes.add(u)
+        active_nodes.add(v)
+
     if highlight is not None:
         hset = set(int(h) for h in highlight)
-        ncolor = ["#ffb703" if i in hset else "#8d99ae" for i in range(N)]
+        ncolor = ["#e63946" if i in hset else "#cccccc" for i in range(N)]
     else:
-        ncolor = "#e63946"
+        ncolor = ["#e63946" if i in active_nodes else "#cccccc" for i in range(N)]
+
     nx.draw_networkx_nodes(
         G, pos, ax=ax, node_size=sizes, node_color=ncolor,
         edgecolors="white", linewidths=0.5)
 
     ax.set_title(title, fontsize=11)
     ax.set_xticks([]); ax.set_yticks([])
-    lat0 = float(np.mean(coords[:, 1]))
-    ax.set_aspect(1.0 / max(np.cos(np.deg2rad(lat0)), 1e-3), adjustable="box")
+    # 匹配节点坐标分布的横纵比例，不使用正方形
+    ax.set_aspect('auto')
     ax.margins(0.06)
 
 
 
+
+
 # ---------------------------------------------------------------------------
-# Figuras concretas
+# 具体图形
 # ---------------------------------------------------------------------------
 def plot_causal_graph(causal: dict, coords: np.ndarray, paths: RunPaths,
-                      base="input_causal_graph"):
-    """Grafo causal dirigido, ponderado y con signo; resalta top_nodes."""
+                      base="input_causal_graph", dt_str=None):
+    """有向、加权且带符号的因果图；高亮 top_nodes。"""
     W = causal_signed_matrix(causal)
     meta = causal.get("meta", {})
     thr = meta.get("mask_threshold", 0.5)
@@ -124,17 +133,18 @@ def plot_causal_graph(causal: dict, coords: np.ndarray, paths: RunPaths,
     n_edges = int((W != 0).sum())
     n_pos = int((W > 0).sum()); n_neg = int((W < 0).sum())
 
-    fig, ax = plt.subplots(figsize=(8, 7.5))
+    fig, ax = plt.subplots(figsize=(12, 8))
     draw_directed_weighted(
         ax, W, coords,
         title=(f"Input causal graph $G_C$  (directed, signed weights)\n"
                f"mask_threshold={thr}  |E|={n_edges}  (+{n_pos} / -{n_neg})"
-               + ("  gold=top_nodes" if top_nodes is not None else "")),
+               + ("  gold=top_nodes" if top_nodes is not None else "")
+               + (f", time: {dt_str}" if dt_str else "")),
         node_scores=node_scores, highlight=top_nodes, signed=True)
 
     legend = [
-        Line2D([0], [0], color="#1d4e89", lw=3, label="positive effect (+)"),
-        Line2D([0], [0], color="#c1121f", lw=3, label="negative effect (-)"),
+        Line2D([0], [0], color="#e63946", lw=3, label="Causal Effect(+)"),
+        Line2D([0], [0], color="#457b9d", lw=3, label="Causal Effect(-)"),
     ]
     if top_nodes is not None:
         legend.append(Line2D([0], [0], marker="o", color="w",
@@ -145,16 +155,17 @@ def plot_causal_graph(causal: dict, coords: np.ndarray, paths: RunPaths,
 
 
 def plot_intent_graph(A_I: np.ndarray, coords: np.ndarray, paths: RunPaths,
-                      step: int, delta=None, base="input_intent_graph"):
-    """Grafo de intencion dirigido y ponderado por intensidad s_ij."""
+                      step: int, delta=None, base="input_intent_graph", dt_str=None):
+    """按强度 s_ij 加权的有向意图图。"""
     n_edges = int((A_I > 0).sum())
     title = (f"Input intent graph $G_I^t$  (directed, weighted)\n"
              f"t = step {step}   |E|={n_edges}"
-             + (f"   $\\delta$={delta:.3f}" if delta is not None else ""))
-    fig, ax = plt.subplots(figsize=(8, 7.5))
+             + (f"   $\\delta$={delta:.3f}" if delta is not None else "")
+             + (f", time: {dt_str}" if dt_str else ""))
+    fig, ax = plt.subplots(figsize=(12, 8))
     draw_directed_weighted(ax, A_I, coords, title=title, signed=False,
-                           uni_color="#2a9d8f")
-    legend = [Line2D([0], [0], color="#2a9d8f", lw=3,
+                           uni_color="#e63946")
+    legend = [Line2D([0], [0], color="#e63946", lw=3,
                      label="intent strength $s_{ij}$ (width $\\propto s$)")]
     ax.legend(handles=legend, loc="upper right", fontsize=8)
     return paths.save_figure(fig, paths.figures, base)
@@ -162,12 +173,12 @@ def plot_intent_graph(A_I: np.ndarray, coords: np.ndarray, paths: RunPaths,
 
 def plot_side_by_side(causal: dict, A_I: np.ndarray, coords: np.ndarray,
                       paths: RunPaths, step: int, delta=None,
-                      base="input_graphs_side_by_side"):
-    """Panel doble: causal (izq) e intencion (der) para comparacion."""
+                      base="input_graphs_side_by_side", dt_str=None):
+    """双面板：因果（左）与意图（右）对比。"""
     W = causal_signed_matrix(causal)
     meta = causal.get("meta", {})
     top_nodes = meta.get("top_nodes")
-    fig, axes = plt.subplots(1, 2, figsize=(15, 7.5))
+    fig, axes = plt.subplots(1, 2, figsize=(20, 8))
     draw_directed_weighted(
         axes[0], W, coords,
         title=f"Causal $G_C$  (mask={meta.get('mask_threshold', 0.5)})",
@@ -175,13 +186,13 @@ def plot_side_by_side(causal: dict, A_I: np.ndarray, coords: np.ndarray,
     draw_directed_weighted(
         axes[1], A_I, coords,
         title=f"Intent $G_I^t$  (t=step {step})", signed=False,
-        uni_color="#2a9d8f")
+        uni_color="#e63946")
     fig.tight_layout()
     return paths.save_figure(fig, paths.figures, base)
 
 
 # ---------------------------------------------------------------------------
-# main
+# 主函数
 # ---------------------------------------------------------------------------
 def run(cfg: Config, intent_step: int):
     paths = RunPaths(cfg.out_root)
@@ -193,13 +204,13 @@ def run(cfg: Config, intent_step: int):
     A_I_list = bundle["A_I_list"]
     delta_list = bundle.get("delta_list")
 
-    # recarga el dict causal completo (para signo + meta); si es sintetico,
-    # reconstruye un dict minimo desde load_all no lo guarda -> usa fichero.
+    # 重新加载完整的因果字典（带符号 + 元数据）；如果是合成的，
+    # 从不保存的 load_all 重建最小字典 -> 使用文件。
     import os
     if os.path.exists(cfg.causal_path()):
         causal = load_causal(cfg.causal_path())
     else:
-        # sintetico: envuelve la adyacencia en un dict compatible
+        # 合成：将邻接矩阵包装在兼容的字典中
         A = bundle["A_C"]
         g = np.where(A > 0, "-->", "").astype(object)[:, :, None]
         v = A[:, :, None]

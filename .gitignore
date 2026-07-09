@@ -12,3 +12,4 @@ reference/**
 *.svg
 pems_spatial_kmeans_topK/**
 data/**
+*.zip

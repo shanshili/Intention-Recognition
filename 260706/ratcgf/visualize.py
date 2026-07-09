@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-r"""Todas las visualizaciones del proyecto.
+"""项目的所有可视化。
 
-Cada figura se guarda simultaneamente en SVG, PNG, PDF y EPS con timestamp.
+每张图同时保存为带time戳的 SVG、PNG、PDF 和 EPS 格式。
 
-NOTA (v2): las vistas derivadas, el grafo fusionado y el subgrafo de despliegue
-se dibujan ahora como grafos DIRIGIDOS y PONDERADOS (flechas i->j, color/anchura
-por peso) usando `quiver` (vectorizado y rapido para exportar muchos pasos).
-Convencion de arista: A[i, j] != 0  =>  flecha del nodo i al nodo j.
+注意 (v2)：派生视图、融合图和部署子图现在绘制为有向加权图
+（箭头 i->j，颜色/线宽按权重），使用 `quiver`（向量化且快速，便于导出多步）。
+边约定：A[i, j] != 0  =>  从节点 i 到节点 j 的箭头。
 """
 import os
 from typing import Dict, List
@@ -16,7 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# nombre chino -> (clave interna, subcarpeta, titulo)
+# 内部名 -> (子文件夹, 标题)
 VIEW_EXPORTS = [
     ("CI", "consensus", "Causal-Intent Consensus (A_CI)"),
     ("R", "intent_residual", "Intent Residual (R_I)"),
@@ -33,8 +32,8 @@ _EPS = 1e-8
 def _quiver_directed(ax, A: np.ndarray, coords: np.ndarray,
                      cmap="viridis", shrink: float = 0.90,
                      width: float = 0.004, alpha: float = 0.75, zorder=1):
-    """Dibuja A como aristas DIRIGIDAS i->j; color = peso. Devuelve el handle
-    de quiver (o None si no hay aristas)."""
+    """将 A 绘制为有向边 i->j；颜色 = 权重。返回 quiver 句柄
+   （如果没有边则返回 None）。"""
     ii, jj = np.nonzero(A)
     if ii.size == 0:
         return None
@@ -54,18 +53,23 @@ def _quiver_directed(ax, A: np.ndarray, coords: np.ndarray,
 def _frame(ax, coords, title, fontsize=10):
     ax.set_title(title, fontsize=fontsize)
     ax.set_xticks([]); ax.set_yticks([])
-    lat0 = float(np.mean(coords[:, 1]))
-    ax.set_aspect(1.0 / max(np.cos(np.deg2rad(lat0)), 1e-3), adjustable="box")
+    # 匹配节点坐标分布的横纵比例，不使用正方形
+    ax.set_aspect('auto')
     ax.margins(0.06)
 
 
 def _draw_adj(ax, A: np.ndarray, coords: np.ndarray, title: str,
-              edge_cmap="viridis", node_color="#d1495b"):
-    """Dibuja una adyacencia ponderada DIRIGIDA sobre las coordenadas."""
-    _quiver_directed(ax, A, coords, cmap=edge_cmap)
+              edge_cmap="viridis", node_color="#e63946"):
+    """在坐标上绘制有向加权邻接矩阵。"""
+    _quiver_directed(ax, A, coords, cmap=edge_cmap, zorder=3)
     deg = A.sum(1) + A.sum(0)
     sizes = 10 + 60 * (deg / (deg.max() + _EPS))
-    ax.scatter(coords[:, 0], coords[:, 1], s=sizes, c=node_color,
+
+    # 选中节点红底白框，未选中灰色
+    active = (A.sum(1) + A.sum(0)) > 0
+    ncolor = np.where(active, "#e63946", "#cccccc")
+
+    ax.scatter(coords[:, 0], coords[:, 1], s=sizes, c=ncolor,
                edgecolors="white", linewidths=0.4, zorder=2)
     _frame(ax, coords, title)
 
@@ -85,9 +89,9 @@ def plot_loss_curve(history: Dict, paths, base="loss_curve"):
 
 
 def plot_fused_visualization(S_D: np.ndarray, node_scores: np.ndarray,
-                             coords: np.ndarray, paths, base="fused_SD"):
-    """Heatmap de S_D + red fusionada DIRIGIDA sobre coordenadas."""
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.5))
+                             coords: np.ndarray, paths, base="fused_SD", dt_str=None):
+    """S_D 的热力图 + 坐标上的有向融合网络。"""
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
     im = axes[0].imshow(S_D, cmap="viridis", aspect="auto")
     axes[0].set_title("Fused edge score matrix  $S_D^t$")
     axes[0].set_xlabel("dst node"); axes[0].set_ylabel("src node")
@@ -98,19 +102,22 @@ def plot_fused_visualization(S_D: np.ndarray, node_scores: np.ndarray,
         fig.colorbar(q, ax=axes[1], fraction=0.046, pad=0.04, label="edge score")
     sc = node_scores
     sizes = 15 + 120 * (sc - sc.min()) / (sc.max() - sc.min() + _EPS)
-    sp = axes[1].scatter(coords[:, 0], coords[:, 1], s=sizes, c=sc,
-                         cmap="magma", edgecolors="white", linewidths=0.4, zorder=2)
+    active = sc > 0
+    ncolor = np.where(active, "#e63946", "#cccccc")
+    sp = axes[1].scatter(coords[:, 0], coords[:, 1], s=sizes, c=ncolor,
+                         edgecolors="white", linewidths=0.4, zorder=2)
     fig.colorbar(sp, ax=axes[1], fraction=0.046, pad=0.04, label="node score")
+    dt_label = f", time: {dt_str}" if dt_str else ""
     _frame(axes[1], coords,
-           "Fused deployment graph (directed; node score = $Score_i^t$)")
+           "Fused deployment graph (directed; node score = $Score_i^t$){dt_label}")
     fig.tight_layout()
     return paths.save_figure(fig, paths.figures, base)
 
 
 def plot_deployment_subgraph(deploy: Dict, coords: np.ndarray,
-                             paths, base="deployment_subgraph"):
-    """Subgrafo de despliegue G_D^t con aristas DIRIGIDAS i->j."""
-    fig, ax = plt.subplots(figsize=(7.5, 7))
+                             paths, base="deployment_subgraph", dt_str=None):
+    """绘制部署子图 G_D^t。"""
+    fig, ax = plt.subplots(figsize=(12, 8))
     # candidatos en gris
     ax.scatter(coords[:, 0], coords[:, 1], s=12, c="#cccccc",
                zorder=1, label="candidate")
@@ -130,14 +137,13 @@ def plot_deployment_subgraph(deploy: Dict, coords: np.ndarray,
         c = coords[nodes]
         ax.scatter(c[:, 0], c[:, 1], s=90, c="#e63946",
                    edgecolors="black", linewidths=0.6, zorder=3, label="deployed")
+    dt_label = f", time: {dt_str}" if dt_str else ""
     ax.set_title(f"Deployment subgraph $G_D^t$  (directed)  "
                  f"(|V|={deploy['num_nodes']}, |E|={deploy['num_edges']}, "
-                 f"cost={deploy['cost']:.1f})")
+                 f"cost={deploy['cost']:.1f}){dt_label}")
     ax.set_xticks([]); ax.set_yticks([])
-    lat0 = float(np.mean(coords[:, 1]))
-    ax.set_aspect(1.0 / max(np.cos(np.deg2rad(lat0)), 1e-3), adjustable="box")
+    ax.set_aspect('auto')
     ax.margins(0.06)
-    ax.legend(loc="upper right")
 
     return paths.save_figure(fig, paths.figures, base)
 
@@ -145,7 +151,7 @@ def plot_deployment_subgraph(deploy: Dict, coords: np.ndarray,
 # ---------------------------------------------------------------------------
 def export_97_views(model, builder, centers: List[int], coords: np.ndarray,
                     paths, cfg, device):
-    """Exporta las 6 vistas DIRIGIDAS para cada paso t en views_97steps/."""
+    """导出 97 个视图。"""
     import torch
     from .modules.module1_residual import build_views
 

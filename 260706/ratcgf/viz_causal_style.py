@@ -1,23 +1,24 @@
 # -*- coding: utf-8 -*-
-r"""Estilo de visualizacion dirigida "PCMCI MultiDiGraph" para RA-TCGF.
+r"""RA-TCGF 的 "PCMCI MultiDiGraph" 有向可视化样式。
 
-Reproduce el aspecto de referencia del proyecto (pcmci_draw_MultiDiGraph2 /
-visualize_mask_subgraph) SIN depender de esos modulos ni de cartopy:
+复现项目的参考外观 (pcmci_draw_MultiDiGraph2 /
+visualize_mask_subgraph) 而不依赖这些模块或 cartopy：
 
-  - Grafo dirigido MultiDiGraph con flechas.
-  - Nodos: color = suma de |efecto| de aristas conectadas (YlGn), tamano
-    proporcional a esa fuerza; SOLO se etiqueta el 30 % de nodos mas fuertes.
-  - Aristas: color = efecto causal con signo (seismic, azul=- / rojo=+) para el
-    grafo causal; para vistas/intencion (sin signo) se usa un mapa secuencial.
-  - Auto-lazos (self-loops) dibujados para los nodos etiquetados.
-  - Doble colorbar: fuerza de nodo (izq.) y efecto de arista (der.).
+  - 带有箭头的有向图 MultiDiGraph。
+  - 节点：颜色 = 连接边的 |效应| 之和，大小与该强度成比例；
+    仅标记强度前 30% 的节点。
+  - 边：颜色 = 带符号的因果效应（seismic，蓝=- / 红=+）用于因果图；
+    对于视图/意图（无符号）使用顺序色彩映射。
+  - 仅为标记的节点绘制自环。
+  - 双色彩条：节点强度（左）和边效应（右）。
 
-Convenciones de indice (¡importantes para la direccion de la flecha!):
-  - Causal (.pkl PCMCI):   graph[target, source, tau] == '-->'  =>  arista source->target
-                           (identico a build_multi_di_graph de referencia).
-  - Intencion / vistas:    A[i, j] > 0                          =>  arista i->j
-                           (identico a intent_to_adj_list de RA-TCGF).
+索引约定（对箭头方向很重要！）：
+  - 因果 (.pkl PCMCI)：   graph[target, source, tau] == '-->'  =>  边 source->target
+                           (与参考的 build_multi_di_graph 相同)。
+  - 意图 / 视图：         A[i, j] > 0                          =>  边 i->j
+                           (与 RA-TCGF 的 intent_to_adj_list 相同)。
 """
+
 from typing import Dict
 
 import numpy as np
@@ -30,10 +31,10 @@ _EPS = 1e-8
 
 
 # --------------------------------------------------------------------------- #
-#  Constructores de MultiDiGraph                                              #
+#  MultiDiGraph 构造器                                                        #
 # --------------------------------------------------------------------------- #
 def build_causal_digraph(graph, val_matrix):
-    r"""PCMCI [N,N,tau+1] -> MultiDiGraph (source->target, con signo y lag)."""
+    r"""PCMCI [N,N,tau+1] -> MultiDiGraph (source->target，带符号和滞后)。"""
     graph = np.asarray(graph, dtype=object)
     val = np.asarray(val_matrix, dtype=float)
     if graph.ndim == 2:
@@ -53,7 +54,7 @@ def build_causal_digraph(graph, val_matrix):
 
 
 def build_weighted_digraph(A, self_loops=False):
-    r"""Adyacencia ponderada [N,N] -> MultiDiGraph (A[i,j]>0 => i->j, sin signo)."""
+    r"""加权邻接 [N,N] -> MultiDiGraph (A[i,j]>0 => i->j，无符号)。"""
     A = np.asarray(A, dtype=float)
     N = A.shape[0]
     G = nx.MultiDiGraph()
@@ -68,7 +69,7 @@ def build_weighted_digraph(A, self_loops=False):
 
 
 # --------------------------------------------------------------------------- #
-#  Dibujo (nucleo compartido)                                                  #
+#  绘图（共享核心）                                                            #
 # --------------------------------------------------------------------------- #
 def _node_strength(G, N):
     s = np.zeros(N, dtype=float)
@@ -90,24 +91,38 @@ def _draw_reference_style(G, coords, ax, fig, signed,
     N = G.number_of_nodes()
     pos = {i: (float(coords[i, 0]), float(coords[i, 1])) for i in range(N)}
 
-    # --- nodos por fuerza conectada ---
+    # --- 按连接强度的节点 ---
     strength = _node_strength(G, N)
     vmax_n = strength.max() if strength.max() > 0 else 1.0
     sizes = 100 + (strength / vmax_n) * 300
-    nx.draw_networkx_nodes(G, pos, node_size=sizes, node_color=strength,
-                           cmap=node_cmap, edgecolors="white", linewidths=1.0,
+
+    # 判断节点是否为选中节点（有边连接）
+    active_nodes = set()
+    for u, v, _k, d in G.edges(keys=True, data=True):
+        active_nodes.add(u)
+        active_nodes.add(v)
+
+    ncolor = []
+    for i in range(N):
+        if i in active_nodes:
+            ncolor.append("#e63946")  # 选中节点：红底
+        else:
+            ncolor.append("#cccccc")  # 未选中节点：灰色
+
+    nx.draw_networkx_nodes(G, pos, node_size=sizes, node_color=ncolor,
+                           edgecolors="white", linewidths=1.0,
                            alpha=0.9, ax=ax)
 
-    # etiquetas solo para el top-30 %
+    # 仅前 30% 的标签（白字）
     if N > 0:
         thr = np.quantile(strength, 1.0 - label_top_ratio)
         labels = {i: i for i in range(N) if strength[i] >= thr and strength[i] > 0}
     else:
         labels = {}
     nx.draw_networkx_labels(G, pos, labels=labels, font_size=8,
-                            font_color="black", ax=ax)
+                            font_color="white", ax=ax)
 
-    # --- rango de color de aristas ---
+    # --- 边颜色范围 ---
     effs = [float(d.get("causal_effect", d.get("weight", 0.0)))
             for *_e, d in G.edges(keys=True, data=True)]
     if signed:
@@ -131,7 +146,7 @@ def _draw_reference_style(G, coords, ax, fig, signed,
                                arrowsize=10, ax=ax, node_size=sizes,
                                connectionstyle=cs)
 
-    # auto-lazos solo en nodos etiquetados
+    # --- 自环边（箭头）---
     for u, _v, _k, d in self_edges:
         if u not in labels:
             continue
@@ -146,7 +161,7 @@ def _draw_reference_style(G, coords, ax, fig, signed,
                                     lw=1, alpha=0.7,
                                     mutation_scale=width * 1.1 + 5))
 
-    # --- colorbars ---
+    # --- 边颜色条 ---
     sm = plt.cm.ScalarMappable(cmap=edge_cmap, norm=norm); sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax, fraction=0.030, pad=0.02)
     cbar.set_label(edge_label, rotation=270, labelpad=12)
@@ -159,47 +174,45 @@ def _draw_reference_style(G, coords, ax, fig, signed,
 
     ax.set_xticks([])
     ax.set_yticks([])
-    # 经纬度：用 cos(lat) 校正宽高比，保留数据范围，不把点压到中间
-    lat0 = float(np.mean(coords[:, 1]))
-    ax.set_aspect(1.0 / max(np.cos(np.deg2rad(lat0)), 1e-3), adjustable="box")
+    # 匹配节点坐标分布的横纵比例，不使用正方形
+    ax.set_aspect('auto')
     ax.margins(0.06)
     ax.grid(True, linestyle="--", alpha=0.3)
 
 
+
+
 # --------------------------------------------------------------------------- #
-#  API de alto nivel (guardan via RunPaths.save_figure)                        #
+#  高级 API（通过 RunPaths.save_figure 保存）                                  #
 # --------------------------------------------------------------------------- #
 def plot_input_causal(causal: Dict, coords: np.ndarray, paths,
-                      base="input_causal_graph_ref"):
-    r"""Grafo causal G_C dirigido con signo (estilo PCMCI de referencia)."""
+                      base="input_causal_graph_ref", dt_str=None):
+    r"""带符号的有向因果图 G_C（参考 PCMCI 样式）。"""
     G = build_causal_digraph(causal["graph"], causal["val_matrix"])
     n_edges = G.number_of_edges()
     meta = causal.get("meta", {}) if isinstance(causal, dict) else {}
     thr = meta.get("mask_threshold", None)
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(12, 8))
     _draw_reference_style(G, coords, ax, fig, signed=True,
-                          edge_cmap=plt.cm.seismic, edge_label="Causal Effect",
+                          edge_cmap=plt.cm.RdBu_r, edge_label="Causal Effect",
                           curved=False)
-    ttl = (f"Input causal graph $G_C$ (directed, signed) | |E|={n_edges}"
-           + (f", mask_thr={thr}" if thr is not None else "")
-           + "\n(node labels: top 30% $\\Sigma$|effect|)")
-    ax.set_title(ttl, fontsize=11)
-    ax.set_xlabel("x"); ax.set_ylabel("y")
-    return paths.save_figure(fig, paths.figures, base)
+
 
 
 def plot_input_intent(A_I: np.ndarray, coords: np.ndarray, paths, step: int,
-                      delta=None, base="input_intent_graph_ref"):
-    r"""Grafo de intencion G_I^t dirigido y ponderado (sin signo)."""
+                      delta=None, base="input_intent_graph_ref", dt_str=None):
+    r"""有向加权的意图图 G_I^t（无符号）。"""
     G = build_weighted_digraph(A_I, self_loops=False)
     n_edges = G.number_of_edges()
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(12, 8))
     _draw_reference_style(G, coords, ax, fig, signed=False,
                           edge_cmap=plt.cm.plasma,
                           edge_label=r"intent strength $s_{ij}$")
+    dt_label = f", time: {dt_str}" if dt_str else ""
     ttl = (f"Input intent graph $G_I^t$ (directed, weighted) | step t={step}, "
            f"|E|={n_edges}"
            + (f", $\\delta$={delta:.3f}" if delta is not None else "")
+           + dt_label
            + "\n(node labels: top 30% $\\Sigma s$)")
     ax.set_title(ttl, fontsize=11)
     ax.set_xlabel("x"); ax.set_ylabel("y")
@@ -207,13 +220,14 @@ def plot_input_intent(A_I: np.ndarray, coords: np.ndarray, paths, step: int,
 
 
 def plot_view_reference(A: np.ndarray, coords: np.ndarray, paths,
-                        base: str, title: str, directory=None):
-    r"""Una vista derivada [N,N] (>=0) como grafo dirigido, estilo referencia."""
+                        base: str, title: str, directory=None, dt_str=None):
+    r"""派生视图 [N,N] (>=0) 作为有向图，参考样式。"""
     G = build_weighted_digraph(A, self_loops=False)
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(12, 8))
     _draw_reference_style(G, coords, ax, fig, signed=False,
                           edge_cmap=plt.cm.viridis, edge_label="edge weight")
+    dt_label = f"\ntime: {dt_str}" if dt_str else ""
     ax.set_title(f"{title}\n|E|={G.number_of_edges()} "
-                 f"(node labels: top 30% $\\Sigma w$)", fontsize=10)
+                 f"(node labels: top 30% $\\Sigma w$){dt_label}", fontsize=10)
     directory = directory if directory is not None else paths.figures
     return paths.save_figure(fig, directory, base)

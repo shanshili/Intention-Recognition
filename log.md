@@ -1960,6 +1960,255 @@ w=12,h=1
 
 ## 260708
 
+### 测试260706
+
+**已加入因果意图融合**
+
 当前意图图保存的 intent_graphs_data 是只有show时间步的
 
 修改了读取的数据集的问题，但是输出的演示图片不太理解，且节点布局有问题
+
+绘制箭头方向反了
+
+`@file ratcgf/viz_inputs.py` `@file ratcgf/viz_causal_style.py` `@file ratcgf/visualize.py` `@file ratcgf/views.py` `@file ratcgf/main.py`  1. 260706\ratcgf\outputs\run_20260709_110315\figures\views_target_ref 下的 view_ref_causal_inactive因果方向不对 2. 输入的意图图、意图残差图、因果意图共识图、意图持续图、意图新增图、意图消退图都标明日期和小时  3.所有绘图，被选中的节点（有边的）都标红，白框红底白字，大小表示节点初度、入度，出度、入度越大节点越大；未选中的节点一律用灰色表示； 因果边用红白蓝过度色条，红色表示正因果影响，蓝色表示负因果影响，0处是白色  3. 画框不要用正方形，匹配节点坐标分布的横纵比例，应该是个长方向
+
+### 测试260706_2
+
+#### **调整绘图问题**
+
+> ## 一、节点大小
+>
+> 节点大小都是"基础值 + 按某个强度归一化后的增量",公式各图不同:
+>
+> | 图 / 函数                                   | 文件:行                     | 设置代码                                      | 说明                                                    |
+> | ------------------------------------------- | --------------------------- | --------------------------------------------- | ------------------------------------------------------- |
+> | 参考样式(输入因果/意图、`views_target_ref`) | `viz_causal_style.py:130`   | `sizes = 100 + (strength / vmax_n) * 300`     | 最小 100,最大 400;`strength`=该节点所连边 \|效应\| 之和 |
+> | `views_97steps` 各视图                      | `visualize.py:139`          | `sizes = 10 + 60 * (deg / (deg.max()+_EPS))`  | 最小 10,最大 70;按节点度                                |
+> | 融合图 `fused_SD`(右图)                     | `visualize.py:191`          | `sizes = 15 + 120 * (sc-sc.min())/(...)`      | 按 node score                                           |
+> | 部署子图 候选点/已部署点                    | `visualize.py:210` / `:231` | `s=12`(灰色候选) / `s=90`(红色部署)           | 固定值                                                  |
+> | `viz_inputs.py` 因果/意图/并排              | `viz_inputs.py:105`         | `sizes = 25 + 130 * (ns-ns.min())/(rng+1e-8)` | 最小 25,最大 155                                        |
+>
+> 改法举例:想让参考样式节点整体变大,把 `viz_causal_style.py:130` 的 `100` 和 `300` 调大即可(前者是下限,后者是浮动幅度)。
+>
+> ## 二、线宽
+>
+> 要分清两种"线":**箭头/边线本身的粗细** 和 **节点白色描边(边框)的粗细**。
+>
+> **边线粗细:**
+>
+> | 图 / 函数                         | 文件:行                                                | 设置代码                                                     |
+> | --------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
+> | 参考样式(nx 画边)                 | `viz_causal_style.py:118-119`(默认参数) + `:179`(计算) | `base_width=1.0`、`width_scale=5.0`;`width = base_width + abs(val)*width_scale` |
+> | `views_97steps`/融合(quiver 箭头) | `visualize.py:87`(默认 `width=0.004`)、`:109`          | quiver 的 `width` 是相对轴宽的比例,不是磅值                  |
+> | 部署子图(quiver 箭头)             | `visualize.py:222`                                     | `width=0.005`                                                |
+> | `viz_inputs.py`(nx 画边)          | `viz_inputs.py:112`                                    | `widths = 0.4 + 2.8 * np.abs(w)/wabs`                        |
+>
+> **节点白色描边粗细(第 5 点要求的白框):**
+>
+> | 图                       | 文件:行                     | 代码             |
+> | ------------------------ | --------------------------- | ---------------- |
+> | 参考样式节点             | `viz_causal_style.py:146`   | `linewidths=1.0` |
+> | `views_97steps`/融合散点 | `visualize.py:146` / `:195` | `linewidths=0.6` |
+> | 部署点白框               | `visualize.py:232`          | `linewidths=1.0` |
+> | `viz_inputs.py` 节点     | `viz_inputs.py:145`         | `linewidths=0.6` |
+>
+> 另外箭头头部大小在 quiver 的 `headwidth/headlength`(如 `visualize.py:110`)、nx 边的 `arrowsize`(`viz_causal_style.py:182` 为 12)控制,和线宽是分开的参数。
+>
+> ## 三、字体大小
+>
+> 字体是**两层**控制,建议优先改常量:
+>
+> **第 1 层——每个模块顶部的字号常量(改这里最省事,影响该模块所有图):**
+>
+> - `viz_causal_style.py:36-39` → `_TITLE_FS=16`、`_LABEL_FS=14`、`_NODE_LABEL_FS=14`、`_TICK_FS=12`
+> - `visualize.py:53-56` → `_TITLE_FS=15`、`_LABEL_FS=13`、`_TICK_FS=11`、`_NODE_LABEL_FS=12`
+> - `viz_inputs.py:33-36` → 同 visualize 一套
+>
+> 这四个常量分别对应:标题、坐标轴/色条标签、节点标签、刻度/色条刻度。它们被各处的 `fontsize=_XXX_FS` 引用(标题如 `viz_causal_style.py:234`;节点标签如 `:155` 和 `visualize.py:129`、`viz_inputs.py:149`;色条如 `:204-205`)。
+>
+> **第 2 层——全局 rcParams 默认值(兜底,凡是没显式指定 fontsize 的文字都吃这套):**
+>
+> - `main.py:92-98`(主流程运行时设置):`font.size=15`、`axes.titlesize=17`、`axes.labelsize=15`、`xtick/ytick=13`、`legend=13`、`figure.titlesize=19`
+> - 各模块内的 `_apply_rc()`:`viz_causal_style.py:52-58`、`visualize.py:67-72`、`viz_inputs.py:48-53`——把上面的常量写进 rcParams,保证单独运行某个模块时也生效。
+>
+> 一个注意点:`main.py` 的 rcParams(15/17/…)和各模块常量(16/14/…、15/13/…)是**两套数值**,标题这类显式写了 `fontsize=_TITLE_FS` 的地方以模块常量为准,`main.py` 的 rcParams 只在没显式指定时兜底。要全局统一放大,最稳妥是同时把模块常量和 `main.py:92-98` 一起调,或者干脆把各处 `fontsize=_XXX_FS` 去掉、只留 rcParams 一套来源。
+>
+> 需要的话,我可以把这三类参数统一抽到一个配置区(比如一个 `style.py` 或 config 里的字段),这样只改一处就能全局生效,避免现在多套数值分散的情况。
+
+#### run_20260709_162857
+
+![deployment_subgraph_20260709_162857](log.assets/deployment_subgraph_20260709_162857.png)
+
+![fused_SD_20260709_162857](log.assets/fused_SD_20260709_162857.png)
+
+1. fused_SD 是怎么来的，获得的融合权重和部署图有什么关系
+
+> $S_D^t$ 的**来源**以及它和**部署图$G_D^t$** 的关系说清楚。
+>
+> ## 一、$S_D^t$ 是怎么来的
+>
+> (S_D^t)（融合边分数矩阵）是整个 RA-TCGF 模型前向传播四个模块串联的产物。看 `model.py` 的 `RATCGF.forward`，链路如下：
+>
+> **模块 1（残差视图构建）** — `build_views`
+> 输入因果图 (A_C) 和三个时刻的意图图 $A_I^{t-r}, A_I^t, A_I^{t+r}$，构造出候选视图集 `views`$C、I、CI、R、CmI、P、N$、消退视图 `decay`、结构统计 `q_struct`。同时用 `candidate_edge_index` 取候选边、`edge_feature_tensor` 生成逐边特征 (b_{ij})。
+> **模块 2（时空编码）** — `MultiViewEncoder`
+> 输入历史流量序列 `Xseq [L,N,F]` 和各视图，输出每视图的节点表征 (H_m^t) 和视图级摘要 (g_m^t)：
+>
+> ```python
+> H, g = self.encoder(sample["Xseq"], views)
+> ```
+>
+> **模块 3（主导性门控 → (S_D^t)）** — `DominanceGating`
+> 这是 (S_D^t) 真正生成的地方。它把结构统计 `q_struct`、节点表征 `H`、视图摘要 `g`、视图、消退、候选边、边特征 (b_{ij}) 全部喂进去，输出门控权重和融合边分数：
+>
+> ```python
+> gate = self.gating(q_struct, H, g, views, decay, edge_index, b_ij)
+> ...
+> "S_D": gate["S_D"], "s_edge": gate["s_edge"],
+> "pi": gate["pi"], "gamma": gate["gamma"], "omega": gate["omega"],
+> ```
+>
+> 这里的 `pi`、`gamma`、`omega` 就是你问的"融合权重"——它们是门控网络算出的、对各视图/各边的加权系数，用来把多个视图的边证据融合成单一的 (S_D^t)。（`module3_gating.py` 你没上传，所以具体融合公式看不到，但从接口能确定：(S_D^t) = 门控权重对多视图边证据的加权融合。）
+> **节点分数** — `node_scores`
+>
+> ```python
+> h_D = gate["h_D"]
+> mlp_term = self.score_head(h_D)
+> node_sc = node_scores(gate["S_D"], mlp_term)
+> ```
+>
+> 节点分数 $Score_i^t$ 由融合表征 $h_D$ 过 MLP 的项，加上 $S_D^t$ 的某种聚合共同决定。
+>
+> 所以一句话：**$S_D^t$ = 四模块前向的输出，核心是模块 3 用门控权重$(\pi,\gamma,\omega)$把多视图边证据融合成的单一有向加权边分数矩阵。**
+>
+> 补充一点训练侧的背景（`train.py`）：模型是自监督训练的，损失为下一时刻流量预测的 MSE 加上 $S_D^t$ 的 L1 稀疏正则：
+> $
+> \mathcal{L} = \text{MSE}(\hat y,\ y) + \lambda \cdot \frac{1}{|S_D|}\sum |S_D^t|
+> $
+> 这个稀疏项会压制 (S_D^t) 里的弱边，让融合分数矩阵更"干净"，间接影响部署时的候选边质量。
+>
+> ## 二、融合权重 / $S_D^t$ 和部署图 $G_D^t$ 的关系
+>
+> 关系是**上游 → 下游**：$S_D^t$ 和 $Score_i^t$ 是部署算法的**输入打分**，`greedy_deploy`（`deploy.py`）拿它们在预算约束下贪心地挑节点和边，产出 $G_D^t$。
+>
+> 看 `deploy.py` 的 `greedy_deploy`，分两阶段：
+> **第一阶段——选节点（用 $Score_i^t$）**
+> 按节点分数从高到低排序，逐个加入，直到花掉预算的 70%（预留剩下给边）：
+>
+> ```python
+> order = np.argsort(-node_scores)
+> for i in order:
+>     if cost + c_node <= B * 0.7:
+>         selected.append(int(i)); cost += c_node
+>     if cost >= B * 0.7:
+>         break
+> ```
+>
+> 即节点选择只看 $Score_i^t$，受节点成本 $c_i$ 和预算上限 (0.7B) 约束。
+>
+> **第二阶段——选边（用 $S_D^t$）**
+> 把 $S_D^t > 0$的候选边按融合分数降序排，只有**两个端点都已被选中**的边才允许部署，且总花费不能超预算 (B)：
+>
+> ```python
+> ii, jj = np.where(S_dense > 0)
+> cand = [(a, b, S_dense[a,b]) ...]; cand.sort(key=lambda x: -x[2])
+> for i, j, s in cand:
+>     if i in sel_set and j in sel_set:
+>         if cost + c_edge <= B:
+>             edges.append((i, j)); cost += c_edge
+> ```
+>
+> 这正好对应文件头部注释里的整数规划约束：
+> $
+> \sum_i c_i p_i + \sum_{ij} c_{ij} q_{ij} \le B,\qquad q_{ij}\le p_i,\ \ q_{ij}\le p_j
+> $
+> （边要被部署，其两端节点必须都被部署）。贪心策略是这个精确整数规划的近似替代。
+>
+> **效用回报**——用 $S_D^t$ 和视图算部署质量：
+>
+> ```python
+> u_track = jaccard(A_dep, I>0) + jaccard(A_dep, P>0)
+> "deployed_score": sum(S_dense[i,j] for i,j in edges)
+> ```
+>
+> `deployed_score` 就是被部署边的融合分数之和，衡量"部署方案吃到了多少融合证据"。
+>
+> ## 三、把整条链路串起来
+>
+> $$
+> \underbrace{(A_C,\ A_I^{t-r:t+r},\ X)}*{\text{输入}}
+> \xrightarrow{\text{模块1-2}}
+> \underbrace{(H,\ g,\ b*{ij})}*{\text{多视图表征}}
+> \xrightarrow[\pi,\gamma,\omega]{\text{模块3 门控融合}}
+> \underbrace{S_D^t,\ Score_i^t}*{\text{融合打分}}
+> \xrightarrow[\text{预算 }B]{\text{模块4 贪心}}
+> \underbrace{G_D^t}_{\text{部署图}}
+> $$
+>
+> 要点对照：
+>
+> | 量                           | 生成于                            | 在部署里的角色                                     |
+> | ---------------------------- | --------------------------------- | -------------------------------------------------- |
+> | 融合权重 (\pi,\gamma,\omega) | 模块 3 门控                       | 决定各视图边证据如何融合成 (S_D^t)（不直接进部署） |
+> | (S_D^t)                      | 模块 3 输出                       | 部署第二阶段**选边**的打分 + 效用计算              |
+> | (Score_i^t)                  | `node_scores`（(S_D^t) + MLP 项） | 部署第一阶段**选节点**的打分                       |
+> | (G_D^t)                      | `greedy_deploy`                   | 最终部署方案（受预算 (B) 约束）                    |
+>
+> 这也回答了你上一个问题的悬念：`plot_deployment_subgraph` 里画的 `deploy["nodes"]`，正是这里第一阶段按 (Score_i^t) 贪心选出来的节点；`deploy["edges"]` 是第二阶段按 (S_D^t) 选出的边。而 `fused_SD` 右图那个 `active` 掩码跟这套预算贪心毫无关系，只是显示高亮——所以两张图的红点通常对不上。
+>
+> 需要我画一张从输入到 (G_D^t) 的模块数据流示意图吗？可以把 (S_D^t)、(Score_i^t)、融合权重和部署两阶段的依赖关系可视化出来。
+
+
+
+2. run_20260709_162857\figures\views_target_ref==当前的掩码具体是怎么计算实现的==，怎么有的深线条粗，有的细 (先暂不管这个问题，run_20260709_162857\views_97steps看不出来)
+
+   第一个时间步的意图持续、意图新增图、意图消退图都是怎么算出来的
+
+   ![input_causal_graph_ref_20260709_162857](log.assets/input_causal_graph_ref_20260709_162857.png)
+
+   ![input_intent_graph_ref_20260709_162857](log.assets/input_intent_graph_ref_20260709_162857.png)
+
+   ![view_ref_causal_inactive_c168_20260709_162857](log.assets/view_ref_causal_inactive_c168_20260709_162857.png)
+
+   ![view_ref_consensus_c168_20260709_162857](log.assets/view_ref_consensus_c168_20260709_162857.png)
+
+   ![view_ref_intent_decay_c168_20260709_162857](log.assets/view_ref_intent_decay_c168_20260709_162857.png)
+
+   ![view_ref_intent_new_c168_20260709_162857](log.assets/view_ref_intent_new_c168_20260709_162857.png)
+
+   ![view_ref_intent_persist_c168_20260709_162857](log.assets/view_ref_intent_persist_c168_20260709_162857.png)
+
+   ![view_ref_intent_residual_c168_20260709_162857](log.assets/view_ref_intent_residual_c168_20260709_162857.png)
+
+   
+
+![causal_inactive_step000_c1_20260709_162857](log.assets/causal_inactive_step000_c1_20260709_162857.png)
+
+![consensus_step000_c1_20260709_162857](log.assets/consensus_step000_c1_20260709_162857.png)
+
+![intent_decay_step000_c1_20260709_162857](log.assets/intent_decay_step000_c1_20260709_162857.png)
+
+![intent_new_step000_c1_20260709_162857](log.assets/intent_new_step000_c1_20260709_162857.png)
+
+![intent_persist_step000_c1_20260709_162857](log.assets/intent_persist_step000_c1_20260709_162857.png)
+
+![intent_residual_step000_c1_20260709_162857](log.assets/intent_residual_step000_c1_20260709_162857.png)
+
+#### run_20260709_172432
+
+把主循环从"先节点后边"翻转为"边驱动、节点跟随"：
+
+1. 取所有 $S_D^t[i,j]>0$ 的候选边，按分数降序排（可用 $Score_i+Score_j$ 做同分次序的 tie-break）。
+2. 逐条尝试加入。加入边 ((i,j)) 的**增量成本**为
+   $
+   \Delta = c_{\text{edge}} + c_{\text{node}}\cdot\big|{k\in{i,j}: k\notin V_{\text{dep}}}\big|
+   $
+   即边成本，加上"这条边引入的、之前还没部署的端点"的节点成本。已经因别的边而部署过的端点不再重复计费——这自然实现了 (q_{ij}\le p_i,p_j)。
+3. 若 $ \text{cost}+\Delta\le B$就接受这条边，并把新端点登记为已部署节点。
+4. 最终节点集 $V_{\text{dep}}=\bigcup_{(i,j)\in E_{\text{dep}}}{i,j}$——**节点完全是被边带进来的**。
+
+问题： 
+
+1. ==成本计算的细节原理==
+
+2. ==融合的细节==

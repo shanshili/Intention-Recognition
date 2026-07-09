@@ -4,7 +4,7 @@
 
 整体流程为：
 
-\[
+$$
 (G_C,\,G_I^{t-r},\,G_I^t,\,G_I^{t+r},\,X_{t-L+1:t})
 \rightarrow
 \mathcal{A}^{t-r:t+r}
@@ -14,9 +14,9 @@
 S_D^t
 \rightarrow
 G_D^t
-\]
+$$
 
-其中每个视图 \(m\in\mathcal{M}=\{C,I,CI,R,C\setminus I,P,N\}\)。
+其中每个视图 $m\in\mathcal{M}=\{C,I,CI,R,C\setminus I,P,N\}$。
 
 ---
 
@@ -47,7 +47,7 @@ ra_tcgf/
 ## 2. 输入文件（四/五个**独立**文件，结构各不相同）
 
 每个文件有独立的 loader（见 `utils/data_loading.py`），共享同一套节点索引 `0..N-1`。
-加载时会自动把各文件的 \(N\) 对齐到最小公共值并给出警告（`load_all` 中）。
+加载时会自动把各文件的 $N$对齐到最小公共值并给出警告（`load_all` 中）。
 
 | 文件（默认名） | 独立 loader | 数据结构 |
 | :--- | :--- | :--- |
@@ -84,45 +84,105 @@ python -m ratcgf.main --data-dir ../pems_spatial_kmeans_topK --epochs 40 --show-
 | 路径 | 内容 |
 | :--- | :--- |
 | `models/ratcgf_model_<ts>.pt` | **最终训练好的模型**（权重 + 配置 + 训练历史） |
-| `figures/fused_SD_<ts>.{svg,png,pdf,eps}` | **融合后的可视化图**（\(S_D^t\) 热图 + 网络图） |
+| `figures/fused_SD_<ts>.{svg,png,pdf,eps}` | **融合后的可视化图**（$S_D^t$ 热图 + 网络图） |
 | `figures/loss_curve_<ts>.{...}` | **损失函数曲线** |
-| `figures/deployment_subgraph_<ts>.{...}` | \(S_D^t\) 生成的**部署子图** \(G_D^t\) |
-| `arrays/SD_and_deploy_<ts>.npz` | \(S_D^t\) 矩阵、节点分数、部署节点/边 |
+| `figures/deployment_subgraph_<ts>.{...}` | $S_D^t$ 生成的**部署子图** $G_D^t$ |
+| `arrays/SD_and_deploy_<ts>.npz` | $S_D^t$ 矩阵、节点分数、部署节点/边 |
 | `views_97steps/` | **97 个时间步的 6 类视图**（每类一个子文件夹） |
 | `logs/run_summary_<ts>.json` | 运行摘要与指标 |
 
 `views_97steps/` 下 6 个子文件夹分别对应：
 
-- `consensus/` —— 因果-意图共识视图 \(A_{CI}^t=\tilde A_C\odot\tilde A_I^t\)
-- `intent_residual/` —— 意图残差视图 \(R_I^t=(1-M_C)\odot\tilde A_I^t\)
-- `causal_inactive/` —— 因果未激活视图 \(R_C^t=\tilde A_C\odot(1-M_I^t)\)
-- `intent_persist/` —— 意图持续图 \(A_P^t=\min(\tilde A_I^t,\tilde A_I^{t-r})\)
-- `intent_new/` —— 意图新增图 \(A_N^t=[\tilde A_I^t-\tilde A_I^{t-r}]_+\)
-- `intent_decay/` —— 意图消退图 \(A_E^t=[\tilde A_I^{t-r}-\tilde A_I^t]_+\)
+- `consensus/` —— 因果-意图共识视图 $A_{CI}^t=\tilde A_C\odot\tilde A_I^t$
+- `intent_residual/` —— 意图残差视图 $R_I^t=(1-M_C)\odot\tilde A_I^t$
+- `causal_inactive/` —— 因果未激活视图 $R_C^t=\tilde A_C\odot(1-M_I^t)$
+- `intent_persist/` —— 意图持续图 $A_P^t=\min(\tilde A_I^t,\tilde A_I^{t-r})$
+- `intent_new/` —— 意图新增图 $A_N^t=[\tilde A_I^t-\tilde A_I^{t-r}]_+$
+- `intent_decay/` —— 意图消退图 $A_E^t=[\tilde A_I^{t-r}-\tilde A_I^t]_+$
 
 每张图均同时保存为 `svg / png / pdf / eps` 四种格式。
 
 ## 5. 模块与公式对应
 
 - **模块一**（`module1_residual.py`）：掩码
-  \(M_C=\sigma((\tilde A_C-\delta_C)/\eta)\)，
-  \(M_I^\tau=\sigma((\tilde A_I^\tau-\delta_I)/\eta)\)，
-  构造 7 视图 + \(A_E^t\)，并输出 \(\mathbf q_{struct}^t\)（9 维）与 \(\mathbf b_{ij}^t\)（8 维）。
+  $M_C=\sigma((\tilde A_C-\delta_C)/\eta)$，
+  $M_I^\tau=\sigma((\tilde A_I^\tau-\delta_I)/\eta)$，
+  构造 7 视图 + $A_E^t$，并输出 $\mathbf q_{struct}^t$（9 维）与 $\mathbf b_{ij}^t$（8 维）。
 - **模块二**（`module2_encoder.py`）：
-  \(Z_m^\tau=\mathrm{GNN}_m(X_\tau,A_m^\tau)\)，
-  \(H_m^t=\mathrm{TCN}_{node,m}([Z_m^\tau]_\tau)\)，
-  \(\mathbf g_m^t=\mathrm{TCN}_{graph,m}([\mathrm{READOUT}(Z_m^\tau)]_\tau)\)。
+  $Z_m^\tau=\mathrm{GNN}_m(X_\tau,A_m^\tau)$，
+  $H_m^t=\mathrm{TCN}_{node,m}([Z_m^\tau]_\tau)$，
+  $\mathbf g_m^t=\mathrm{TCN}_{graph,m}([\mathrm{READOUT}(Z_m^\tau)]_\tau)$。
 - **模块三**（`module3_gating.py`）：
-  \(\boldsymbol\pi^t=\mathrm{softmax}(\mathrm{MLP}_g([\mathbf q_{struct}^t\Vert\mathbf g_{all}^t]))\)，
-  \(\boldsymbol\gamma_i^t\)、\(\boldsymbol\omega_{ij}^t\)，
-  \(\alpha_{ij,m}^t=\dfrac{\pi_m^t\omega_{ij,m}^t}{\sum_n\pi_n^t\omega_{ij,n}^t+\varepsilon}\)，
-  \(S_D^t[i,j]=\sum_m\alpha_{ij,m}^tA_m^t[i,j]\)。
+  $\boldsymbol\pi^t=\mathrm{softmax}(\mathrm{MLP}_g([\mathbf q_{struct}^t\Vert\mathbf g_{all}^t]))$，
+  $\boldsymbol{\gamma_i^t}$、$\boldsymbol{\omega_{ij}^t}$，
+  $\alpha_{ij,m}^t=\dfrac{\pi_m^t\omega_{ij,m}^t}{\sum_n\pi_n^t\omega_{ij,n}^t+\varepsilon}$，
+  $S_D^t[i,j]=\sum_m\alpha_{ij,m}^tA_m^t[i,j]$。
 - **模块四**（`module4_deploy.py`）：
-  \(Score_i^t=\sum_j S_D^t[i,j]+\sum_j S_D^t[j,i]+\mathrm{MLP}_{score}(\mathbf h_{i,D}^t)\)，
-  在预算 \(\sum_i c_ip_i^t+\sum_{ij}c_{ij}q_{ij}^t\le B\) 下贪心生成 \(G_D^t\)。
+  $Score_i^t=\sum_j S_D^t[i,j]+\sum_j S_D^t[j,i]+\mathrm{MLP}_{score}(\mathbf h_{i,D}^t)$，
+  在预算 $\sum_i c_ip_i^t+\sum_{ij}c_{ij}q_{ij}^t\le B$ 下贪心生成 $G_D^t$。
 
 ## 6. 训练目标
 
-采用自监督预测效用 \(U_{pred}=-\ell(\widehat Y_t^{G(p,q)},Y_t)\)：
-以融合节点表示 \(\mathbf h_{i,D}^t\) 预测下一时刻流量，损失为 MSE 加 \(S_D^t\) 的 L1 稀疏正则；
-弹性效用 \(U_{elastic}\) 与追踪效用 \(U_{track}\) 在部署阶段计算并写入日志。
+采用自监督预测效用 $U_{pred}=-\ell(\widehat Y_t^{G(p,q)},Y_t)$：
+以融合节点表示 $\mathbf h_{i,D}^t$ 预测下一时刻流量，损失为 MSE 加 $S_D^t$ 的 L1 稀疏正则；
+弹性效用 $U_{elastic}$ 与追踪效用 $U_{track}$ 在部署阶段计算并写入日志。
+
+
+
+本项目 **RA-TCGF (Residual-Aware Temporal Causal-intent Graph Fusion)** 的运行流程严格遵循从数据加载到动态部署的端到端闭环。以下是详细的运行流程与各文件作用解析。
+
+### 一、 代码运行流程
+
+整个系统的执行流可概括为 5 个阶段，由 `main.py` 串联驱动：
+
+1. **初始化与数据加载**
+   - 解析命令行参数，通过 `config.py` 生成全局超参配置 `Config`。
+   - 调用 `dataset.py` 中的 `SampleBuilder`，根据 `config.py` 中定义的独立路径加载 4~5 个不同结构的输入文件（时序流、坐标、因果图、意图图等）。若文件缺失且 `allow_synthetic=True`，则自动合成相容数据。
+   - 按时间窗将意图步映射为训练样本，划分训练集。
+
+2. **模型构建与训练**
+   - 实例化 `model.py` 中的 `RATCGF` 模型，按序嵌套模块 1~4。
+   - 执行训练循环：前向传播计算预测值，计算 MSE 损失与 $S_D^t$ 的 L1 稀疏正则，反向传播更新参数。
+
+3. **推理与评分矩阵生成**
+   - 训练完成后，对目标时间步推理，生成融合后的边评分矩阵 $S_D^t$ 及节点表示 $\mathbf{h}_{i,D}^t$。
+
+4. **贪心部署子图生成**
+   - 基于预算约束 $B$，利用 `module4_deploy.py` 的贪心策略，从 $S_D^t$ 中选出得分最高的节点与边，生成部署子图 $G_D^t$。
+
+5. **多格式可视化与导出**
+   - 将 $S_D^t$ 热力图、损失曲线、部署子图等存入 `figures/`。
+   - 导出 97 个时间步的 6 类视图（共识、残差、未激活、持续、新增、消退）至 `views_97steps/`，每张图保存为 SVG/PNG/PDF/EPS 四种格式。
+
+---
+
+### 二、 各文件作用详解
+
+#### 1. 核心入口与配置
+- **`main.py`**：系统总入口。负责解析参数、调度数据加载、训练、推理、部署及可视化全流程。包含弹性效用 $U_{elastic}$ 的计算逻辑。
+- **`config.py`**：全局配置中心。定义 `DataConfig`、`ModelConfig`、`TrainConfig`、`DeployConfig` 四大数据类，统一管理超参与 4 个独立数据文件的路径解析逻辑。
+
+#### 2. 数据处理
+- **`dataset.py`**：样本构建器 `SampleBuilder`。将展示步 $c$ 映射为时间窗位置，构建包含 $X_{seq}$、$A_C$、$A_I$ 等张量的字典样本。
+- **`diag_data.py`**：数据路径诊断工具。独立运行以检查当前工作目录下各数据文件的存在性与绝对路径，辅助排查路径问题。
+
+#### 3. 模型主体与四大模块
+- **`model.py`**：主模型 `RATCGF`。串联模块 1~4，完成从输入图序列到部署评分的端到端计算。
+- **`modules/module1_residual.py`**：**残差多视图构造**。通过软掩码 $M_C, M_I$ 将输入图拆分为 7 个视图 ($C, I, CI, R, C\setminus I, P, N$) 与 1 个消退视图 $A_E$，并提取 9 维结构统计量 $\mathbf{q}_{struct}$ 与 8 维边特征 $\mathbf{b}_{ij}$。
+- **`modules/module2_encoder.py`**：**时空多视图编码**。对每个视图使用 GNN (GCN/GAT/SAGE) 提取空间表示，再经 TCN 提取节点级 $H_m^t$ 与图级 $\mathbf{g}_m^t$ 时间表示。
+- **`modules/module3_gating.py`**：**动态门控融合**。结合结构统计与图表示，计算图级 $\boldsymbol\pi^t$、节点级 $\boldsymbol\gamma_i^t$、边级 $\boldsymbol\omega_{ij}^t$ 门控，加权融合生成最终评分矩阵 $S_D^t$。
+- **`modules/module4_deploy.py`**：**预算约束部署**。通过 `ScoreHead` 计算节点得分，并在预算 $B$ 约束下贪心选择节点与边，生成子图 $G_D^t$。
+
+#### 4. 底层算子与引擎
+- **`autograd.py`**：基于 NumPy 的轻量级自动微分引擎。提供 `Tensor` 类与反向传播，并内置 `conv1d_causal` 支持 TCN 计算，包含 `Adam` 优化器。
+- **`nn.py`**：基于 `autograd.Tensor` 构建的神经网络基础组件库。包含 `Linear`、`GraphConv`、`GNNEncoder`、`TCN`、`AttnReadout`、`MLP` 等。
+
+#### 5. 部署算法
+- **`deploy.py`**：模块 4 的算法实现。提供 Jaccard 相似度计算与 `greedy_deploy` 贪心算法，按节点与边预算比例分配，确保 $q_{ij} \le p_i, p_j$。
+
+#### 6. 输出目录结构
+- **`outputs/run_&lt;ts&gt;/`**：带时间戳的运行结果目录。
+  - `models/`：保存 `.pt` 模型权重。
+  - `arrays/`：保存 `.npz` 评分矩阵与部署结果。
+  - `figures/`：保存汇总级可视化（损失曲线、融合热力图、部署子图）。
+  - `views_97steps/`：保存 97 步 * 6 类视图的独立可视化（`consensus/`, `intent_residual/`, `causal_inactive/`, `intent_persist/`, `intent_new/`, `intent_decay/`）。
