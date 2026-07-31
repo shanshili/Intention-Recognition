@@ -114,47 +114,38 @@ class TrafficData:
 #                        true_chains=chains)
 
 
-def load_csv(flow_path, coord_path):
+def load_csv(flow_path, coord_path, start_time="2025-01-01 00:00:00"):
+    """读取原始流量和坐标，并构造真实的小时/星期时间特征。
+
+    注意：这里只负责读取数据，不再调用Preprocessor。标准化、异常裁剪、
+    周期残差等操作统一在main.py中执行一次，避免重复预处理。
+    """
     # 1. 读取坐标
     coord_df = pd.read_csv(coord_path)
     coords = coord_df[["x", "y"]].values.astype(np.float32)
-    # print( coords.shape[0])
 
-    # 2. 读取流量数据
+    # 2. 读取流量数据，转换为(N, T)
     flow_df = pd.read_csv(flow_path)
     X = flow_df.values.T.astype(float)
-    # print(X.shape[0])
 
-    # 3. 缺失值处理
-    col_mean = np.nanmean(X, axis=1, keepdims=True)
-    np.copyto(X, col_mean, where=np.isnan(X))
+    if X.shape[0] != coords.shape[0]:
+        raise ValueError(
+            f"流量传感器数{X.shape[0]}与坐标数{coords.shape[0]}不一致。"
+        )
 
-    # 4. 时间特征
+    # 缺失值和异常值由Preprocessor统一处理。
     T = X.shape[1]
-    timestamps = pd.date_range("2020-01-01", periods=T, freq="h")
+    timestamps = pd.date_range(start_time, periods=T, freq="h")
     hour = timestamps.hour.to_numpy()
     weekday = timestamps.dayofweek.to_numpy()
-    train_end = int(0.6 * T)
 
-    # 5. 初始化 TrafficData
-    traffic_data = TrafficData(
+    return TrafficData(
         X=X,
         coords=coords,
         hour=hour,
         weekday=weekday,
-        true_chains=[]
+        true_chains=[],
     )
-
-    # 6. 预处理并重新封装
-    processed_dict = Preprocessor(train_end=train_end).fit_transform(traffic_data)
-    data = TrafficData(
-        X=processed_dict["Z"],
-        coords=coords,
-        hour=processed_dict["hour"],
-        weekday=processed_dict["weekday"],
-        true_chains=[]
-    )
-    return data
 
 
 # --------------------------------------------------------------------------

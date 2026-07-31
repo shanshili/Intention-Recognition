@@ -26,7 +26,7 @@ def save_all_formats(fig, out_dir, stem, timestamp):
     for ext in ("png", "svg", "pdf"):
         name = f"{stem}_{timestamp}.{ext}"
         p = os.path.join(out_dir, name)
-        fig.savefig(p, bbox_inches="tight", dpi=600)
+        fig.savefig(p, bbox_inches="tight", dpi=300)
         paths.append(p)
     plt.close(fig)
     return paths
@@ -131,9 +131,10 @@ def plot_intent_windows(coords, cand, scores_list, window_labels,
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=axes.tolist(), fraction=0.02, pad=0.02)
     cbar.set_label("intent strength  s_ij")
-    fig.suptitle("Final Intent Graphs over 10 Consecutive Time Windows "
-                 "(directed edges; shade = intent strength)",
-                 fontsize=13, y=1.0)
+    fig.suptitle(
+        f"Final Intent Graphs over {n} Consecutive Prediction Windows "
+        "(directed edges; shade = intent strength)",
+        fontsize=13, y=1.0)
     return save_all_formats(fig, out_dir, "intent_graphs_10windows", timestamp)
 
 
@@ -193,9 +194,14 @@ def plot_edge_mask_ablation(results, out_dir, timestamp):
 def plot_intent_density(densities, labels, out_dir, timestamp):
     fig, ax = plt.subplots(figsize=(7.5, 4))
     ax.plot(range(len(densities)), densities, "o-", color="tab:purple")
-    ax.set_xticks(range(len(densities)))
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=7)
+    n = len(densities)
+    # 最多显示约12个横轴标签，97个连续窗口时仍保持可读。
+    tick_step = max(1, int(np.ceil(n / 12)))
+    tick_idx = np.arange(0, n, tick_step)
+    ax.set_xticks(tick_idx)
+    ax.set_xticklabels([labels[i] for i in tick_idx],
+                       rotation=45, ha="right", fontsize=7)
     ax.set_ylabel("intent graph density")
-    ax.set_title("Dynamic intent-graph density across the 10 windows")
+    ax.set_title(f"Dynamic intent-graph density across {len(densities)} consecutive windows")
     ax.grid(True, alpha=0.3)
     return save_all_formats(fig, out_dir, "intent_graph_density", timestamp)

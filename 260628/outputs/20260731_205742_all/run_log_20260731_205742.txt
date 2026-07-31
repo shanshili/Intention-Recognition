@@ -1,0 +1,33 @@
+[run] timestamp = 20260731_205742
+[run] output directory = outputs\20260731_205742
+[data] N=100 sensors, T=5088 hourly steps (212 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=3049 val=1018 test=1018 (split by prediction target time)
+[windows] target-time cuts: train < 3052, val < 4070, test >= 4070
+[feat] building window features (train/val/test)...
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=10570
+[train] starting...
+  epoch   0  L_pred=0.2259  L_total=0.2277  val_MAE=0.1524
+  epoch   1  L_pred=0.0205  L_total=0.0205  val_MAE=0.1271
+[test] DEIG-TCN MAE=0.1270  persistence MAE=0.2581
+[ablation] {'full': 0.12700962309010552, 'mask_top': 0.14522267534707214, 'mask_random': 0.12756364848540575, 'mask_low': 0.1270096230901176}
+[intent] inferring all valid windows: M=5085, E=488, batch=64...
+  [intent] 64/5085
+  [intent] 640/5085
+  [intent] 1280/5085
+  [intent] 1920/5085
+  [intent] 2560/5085
+  [intent] 3200/5085
+  [intent] 3840/5085
+  [intent] 4480/5085
+  [intent] 5085/5085
+[viz] 97 consecutive test windows: target 2025-06-19 14:00:00 -> 2025-06-23 14:00:00
+[viz] writing figures...
+[save] All-window edge intent scores saved to outputs\20260731_205742\edge_intent_scores_20260731_205742.npz
+[save] All-window intent graph data saved to outputs\20260731_205742\intent_graphs_data_20260731_205742.npz
+[save] Model parameters saved to outputs\20260731_205742\model_params_20260731_205742.npz
+[save] Sensor time series plot saved to outputs\20260731_205742\sensor_timeseries_20260731_205742
+[save] Time series data saved to outputs\20260731_205742\timeseries_data_20260731_205742.csv
+[save] Sensor coordinates saved to outputs\20260731_205742\sensor_coords_20260731_205742.csv
+[save] Data specification saved to outputs\20260731_205742\data_spec_20260731_205742.json
+[done] outputs in outputs\20260731_205742

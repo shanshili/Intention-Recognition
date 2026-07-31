@@ -120,70 +120,132 @@ def run(cfg: Config, args):
     model_path = save_model(model, cfg, result, paths)
     print(f"[save] 模型 -> {model_path}")
 
-    # --- 4. 最近一步的推断 ---
+    # # --- 4. 最近一步的推断 ---
+    # centers = builder.valid_centers
+    # target_c = centers[-1]
+    # sample = builder.build(target_c)
+    # model.eval()
+    # with torch.no_grad():
+    #     out = model(sample)
+    # S_D = out["S_D"].detach().cpu().numpy()
+    # nscore = out["node_scores"].detach().cpu().numpy()
+    #
+    # # --- 5. 部署子图 G_D^t ---
+    # A_I_cur = sample["A_I_cur"].detach().cpu().numpy()
+    # A_P = out["views"]["P"].detach().cpu().numpy()
+    # deploy = greedy_deploy(S_D, nscore, A_I_cur, A_P, cfg.deploy)
+    # u_el = elastic_utility(model, sample, out["S_D"], cfg.deploy, device)
+    # deploy["u_elastic"] = u_el
+    # print(f"[deploy] 节点={deploy['num_nodes']} 边={deploy['num_edges']} "
+    #       f"成本={deploy['cost']:.2f} U_track={deploy['u_track']:.3f} "
+    #       f"U_elastic={u_el:.3f}")
+    #
+    # # --- 6. 保存数组 ---
+    # arr_path = paths.array_file("SD_and_deploy", "npz")
+    # np.savez(arr_path, S_D=S_D, node_scores=nscore,
+    #          deploy_nodes=np.array(deploy["nodes"]),
+    #          deploy_edges=np.array(deploy["edges"], dtype=object),
+    #          A_dep=deploy["A_dep"], target_center=target_c)
+    # print(f"[save] 数组 -> {arr_path}")
+    #
+    # # --- 7. 主要图表 (loss / fused / deployment) ---
+    # # 生成时间字符串用于图表标题：数据每小时一条，起点 2025-01-01 00:00，
+    # # 因此中心索引 target_c 对应第 target_c 个小时（自动跨天/跨月）。
+    # dt_str = viz.step_to_dt_str(target_c)
+    # coords = builder.coords
+    # viz.plot_loss_curve(result["history"], paths)
+    # viz.plot_fused_visualization(S_D, nscore, coords, paths, dt_str=dt_str)
+    # viz.plot_deployment_subgraph(deploy, coords, paths, dt_str=dt_str)
+    # print("[fig] loss / fused / deployment 已保存")
+    #
+    # # --- 7b. 输入图（参考 PCMCI 有向样式） ---
+    # #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
+    # causal = _resolve_causal_dict(cfg, bundle)
+    # A_I_draw = bundle["A_I_list"][target_c]
+    # delta_list = bundle.get("delta_list")
+    # delta = (float(delta_list[target_c])
+    #          if delta_list is not None and len(delta_list) > target_c else None)
+    # vcs.plot_input_causal(causal, coords, paths, dt_str=dt_str)
+    # vcs.plot_input_intent(A_I_draw, coords, paths, step=int(target_c), delta=delta, dt_str=dt_str)
+    # src_tag = "真实" if not bundle["used_synthetic"]["causal"] else "合成"
+    # print(f"[fig] 输入图（因果+意图，{src_tag}）已保存")
+    #
+    # #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
+    # views_np = {k: v.detach().cpu().numpy() for k, v in out["views"].items()}
+    # views_np["E"] = out["decay"].detach().cpu().numpy()
+    # ref_dir = os.path.join(paths.figures, "views_target_ref")
+    # os.makedirs(ref_dir, exist_ok=True)
+    # for key, folder, title in viz.VIEW_EXPORTS:      # CI, R, CmI, P, N, E
+    #     # 因果派生视图（causal_inactive / R_C）转置以保持因果方向一致
+    #     vcs.plot_view_reference(
+    #         views_np[key], coords, paths,
+    #         base=f"view_ref_{folder}_c{target_c}",
+    #         title=f"{title}  (step t=c{target_c})",
+    #         directory=ref_dir, dt_str=dt_str,
+    #         transpose=(key == "CmI"))
+    # print(f"[fig] 目标步的 6 个视图（有向样式）-> {ref_dir}")
+    # --- 4. 推断所有时间步并绘制部署图 ---
+    # --- 4. 推断所有时间步并绘制部署图 ---
     centers = builder.valid_centers
-    target_c = centers[-1]
-    sample = builder.build(target_c)
     model.eval()
-    with torch.no_grad():
-        out = model(sample)
-    S_D = out["S_D"].detach().cpu().numpy()
-    nscore = out["node_scores"].detach().cpu().numpy()
+    for target_c in centers:
+        sample = builder.build(target_c)
+        with torch.no_grad():
+            out = model(sample)
+        S_D = out["S_D"].detach().cpu().numpy()
+        nscore = out["node_scores"].detach().cpu().numpy()
 
-    # --- 5. 部署子图 G_D^t ---
-    A_I_cur = sample["A_I_cur"].detach().cpu().numpy()
-    A_P = out["views"]["P"].detach().cpu().numpy()
-    deploy = greedy_deploy(S_D, nscore, A_I_cur, A_P, cfg.deploy)
-    u_el = elastic_utility(model, sample, out["S_D"], cfg.deploy, device)
-    deploy["u_elastic"] = u_el
-    print(f"[deploy] 节点={deploy['num_nodes']} 边={deploy['num_edges']} "
-          f"成本={deploy['cost']:.2f} U_track={deploy['u_track']:.3f} "
-          f"U_elastic={u_el:.3f}")
+        # --- 5. 部署子图 G_D^t ---
+        A_I_cur = sample["A_I_cur"].detach().cpu().numpy()
+        A_P = out["views"]["P"].detach().cpu().numpy()
+        deploy = greedy_deploy(S_D, nscore, A_I_cur, A_P, cfg.deploy)
+        u_el = elastic_utility(model, sample, out["S_D"], cfg.deploy, device)
+        deploy["u_elastic"] = u_el
+        print(f"[deploy] step={target_c} 节点={deploy['num_nodes']} 边={deploy['num_edges']} "
+              f"成本={deploy['cost']:.2f} U_track={deploy['u_track']:.3f} "
+              f"U_elastic={u_el:.3f}")
 
-    # --- 6. 保存数组 ---
-    arr_path = paths.array_file("SD_and_deploy", "npz")
-    np.savez(arr_path, S_D=S_D, node_scores=nscore,
-             deploy_nodes=np.array(deploy["nodes"]),
-             deploy_edges=np.array(deploy["edges"], dtype=object),
-             A_dep=deploy["A_dep"], target_center=target_c)
-    print(f"[save] 数组 -> {arr_path}")
+        # --- 6. 保存数组 ---
+        arr_path = paths.array_file(f"SD_and_deploy_c{target_c}", "npz")
+        np.savez(arr_path, S_D=S_D, node_scores=nscore,
+                 deploy_nodes=np.array(deploy["nodes"]),
+                 deploy_edges=np.array(deploy["edges"], dtype=object),
+                 A_dep=deploy["A_dep"], target_center=target_c)
 
-    # --- 7. 主要图表 (loss / fused / deployment) ---
-    # 生成时间字符串用于图表标题：数据每小时一条，起点 2025-01-01 00:00，
-    # 因此中心索引 target_c 对应第 target_c 个小时（自动跨天/跨月）。
-    dt_str = viz.step_to_dt_str(target_c)
-    coords = builder.coords
+        # --- 7. 主要图表 (fused / deployment) ---
+        dt_str = viz.step_to_dt_str(target_c)
+        coords = builder.coords
+        # 为不同时间步的图片指定独立的子目录，避免覆盖
+        step_paths = paths.sub(f"step_{target_c}")
+        viz.plot_fused_visualization(S_D, nscore, coords, step_paths, dt_str=dt_str)
+        viz.plot_deployment_subgraph(deploy, coords, step_paths, dt_str=dt_str)
+
+        # --- 7b. 输入图（参考 PCMCI 有向样式） ---
+        causal = _resolve_causal_dict(cfg, bundle)
+        A_I_draw = bundle["A_I_list"][target_c]
+        delta_list = bundle.get("delta_list")
+        delta = (float(delta_list[target_c])
+                 if delta_list is not None and len(delta_list) > target_c else None)
+        vcs.plot_input_causal(causal, coords, step_paths, dt_str=dt_str)
+        vcs.plot_input_intent(A_I_draw, coords, step_paths, step=int(target_c), delta=delta, dt_str=dt_str)
+
+        views_np = {k: v.detach().cpu().numpy() for k, v in out["views"].items()}
+        views_np["E"] = out["decay"].detach().cpu().numpy()
+        ref_dir = os.path.join(step_paths.figures, "views_target_ref")
+        os.makedirs(ref_dir, exist_ok=True)
+        for key, folder, title in viz.VIEW_EXPORTS:
+            vcs.plot_view_reference(
+                views_np[key], coords, step_paths,
+                base=f"view_ref_{folder}_c{target_c}",
+                title=f"{title}  (step t=c{target_c})",
+                directory=ref_dir, dt_str=dt_str,
+                transpose=(key == "CmI"))
+
+    print("[fig] 所有时间步的 fused / deployment / 输入图 / 视图已保存")
+    # loss 曲线只需绘制一次
     viz.plot_loss_curve(result["history"], paths)
-    viz.plot_fused_visualization(S_D, nscore, coords, paths, dt_str=dt_str)
-    viz.plot_deployment_subgraph(deploy, coords, paths, dt_str=dt_str)
-    print("[fig] loss / fused / deployment 已保存")
+    print("[fig] loss 曲线已保存")
 
-    # --- 7b. 输入图（参考 PCMCI 有向样式） ---
-    #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
-    causal = _resolve_causal_dict(cfg, bundle)
-    A_I_draw = bundle["A_I_list"][target_c]
-    delta_list = bundle.get("delta_list")
-    delta = (float(delta_list[target_c])
-             if delta_list is not None and len(delta_list) > target_c else None)
-    vcs.plot_input_causal(causal, coords, paths, dt_str=dt_str)
-    vcs.plot_input_intent(A_I_draw, coords, paths, step=int(target_c), delta=delta, dt_str=dt_str)
-    src_tag = "真实" if not bundle["used_synthetic"]["causal"] else "合成"
-    print(f"[fig] 输入图（因果+意图，{src_tag}）已保存")
-
-    #   如果存在 .pkl/.npz 则为真实数据；否则为合成数据。
-    views_np = {k: v.detach().cpu().numpy() for k, v in out["views"].items()}
-    views_np["E"] = out["decay"].detach().cpu().numpy()
-    ref_dir = os.path.join(paths.figures, "views_target_ref")
-    os.makedirs(ref_dir, exist_ok=True)
-    for key, folder, title in viz.VIEW_EXPORTS:      # CI, R, CmI, P, N, E
-        # 因果派生视图（causal_inactive / R_C）转置以保持因果方向一致
-        vcs.plot_view_reference(
-            views_np[key], coords, paths,
-            base=f"view_ref_{folder}_c{target_c}",
-            title=f"{title}  (step t=c{target_c})",
-            directory=ref_dir, dt_str=dt_str,
-            transpose=(key == "CmI"))
-    print(f"[fig] 目标步的 6 个视图（有向样式）-> {ref_dir}")
 
     # --- 8. 所有时间步的 6 个视图大批量导出 ---
     manifest = viz.export_97_views(model, builder, centers, coords,
@@ -220,7 +282,7 @@ def build_argparser():
                    help="意图图 .npz")
     p.add_argument("--node-feat", default=None,
                    help="可选的初始特征文件（.npy/.csv）")
-    p.add_argument("--epochs", type=int, default=40)
+    p.add_argument("--epochs", type=int, default=2)
     p.add_argument("--device", default=None, choices=["cuda", "cpu"])
     p.add_argument("--show-steps", type=int, default=192,
                    help="要导出的时间步数 t（默认 97）")
