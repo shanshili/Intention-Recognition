@@ -1,0 +1,17 @@
+{
+  "source": "D:\\Tjnu-p\\Mp\\Intention Recognition\\260628\\outputs\\20260731_205742_all\\run_summary_20260731_205742.json",
+  "source_sha256": "af06b03a5263f93e7bc85caa7fb118a8aa60e2c1844a8a7f9d50b4633e893a37",
+  "scope": "Descriptive analysis of saved summary, no new forecasting experiment",
+  "windows": 97,
+  "start_target_time": "2025-06-19 14:00:00",
+  "end_target_time": "2025-06-23 14:00:00",
+  "candidate_edges": 488,
+  "retained_edge_counts": [
+    49
+  ],
+  "hotspot_min": 1,
+  "hotspot_max": 9,
+  "adjacent_hotspot_count_changes": 65,
+  "adjacent_pairs": 96,
+  "raw_edge_scores_available_in_run_directory": false
+}

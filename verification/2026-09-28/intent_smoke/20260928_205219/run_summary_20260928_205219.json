@@ -1,0 +1,41 @@
+{
+  "timestamp": "20260928_205219",
+  "data_start": "2025-01-01 00:00:00",
+  "N": 6,
+  "T": 96,
+  "W": 3,
+  "H": 1,
+  "stride": 1,
+  "candidate_edges": 28,
+  "split_rule": "entire prediction target interval",
+  "train_target_cut_index": 57,
+  "val_target_cut_index": 76,
+  "train_windows": 54,
+  "val_windows": 19,
+  "test_windows": 20,
+  "test_MAE": 1.81472238375946,
+  "persistence_MAE": 0.23659453469996408,
+  "edge_mask_ablation": {
+    "full": 1.81472238375946,
+    "mask_top": 1.8231105632581845,
+    "mask_random": 1.8225977194972458,
+    "mask_low": 1.8438777756421725
+  },
+  "intent_windows_saved": 93,
+  "intent_time_definition": "prediction target start time",
+  "intent_quantile_q": 0.9,
+  "visualization_split": "test",
+  "visualization_contiguous": true,
+  "visualization_count": 2,
+  "visualization_start_test_index": 0,
+  "visualization_target_start": "2025-01-04 04:00",
+  "visualization_target_end": "2025-01-04 05:00",
+  "visualization_density": [
+    0.1,
+    0.13333333333333333
+  ],
+  "visualization_hotspot_count": [
+    1,
+    1
+  ]
+}

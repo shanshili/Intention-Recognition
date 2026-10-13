@@ -1,0 +1,13 @@
+[run] 设备=cpu  输出=D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\connected_smoke\run_20260928_205600
+[data] N=6  n_show=93  有效窗口=91  F=3
+[data] 合成={'flow': False, 'coords': False, 'causal': False, 'intent': False, 'node_feat': False}
+[time] pos=0 -> 2025-01-01 00:00:00; pos=95 -> 2025-01-04 23:00:00
+[time] intent alignment={'method': 'explicit_tail_alignment', 'intent_start_pos': 3, 'intent_end_pos': 95, 'intent_start_time': '2025-01-01 03:00:00', 'intent_end_time': '2025-01-04 23:00:00', 'n_show': 93}
+[epoch 001/1] train=1.0104 (pred=1.0103) val=1.1496
+[save] 模型 -> D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\connected_smoke\run_20260928_205600\models\ratcgf_model_20260928_205600.pt
+[deploy] source=val  range=[-inf, +inf]  候选=37  选中=2  selection=latest  stride=1
+[deploy 001/002] c=90 pos=93 time=2025-01-04 21:00:00 |V|=6 |E|=29 cost=11.80/30.00 track=0.966 elastic=0.899
+[deploy 002/002] c=91 pos=94 time=2025-01-04 22:00:00 |V|=6 |E|=29 cost=11.80/30.00 track=0.966 elastic=0.899
+[views] range=[-inf, +inf]  candidates=91  selected=1  selection=latest  stride=1
+[views] 正在导出 1 步 x 6 视图 x 4 格式 = 24 个文件
+[done] 多时间步部署及汇总文件位于 D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\connected_smoke\run_20260928_205600

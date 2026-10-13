@@ -30,8 +30,9 @@ from deig.graph import build_candidate_graph
 from deig.features import build_window_inputs
 from deig.model import (DEIG_TCN, assemble_batch, compute_reverse_index)
 from deig.autograd import Adam
-from deig.intent_graph import (build_intent_graph, extract_hotspots,
-                               node_intent_attributes)
+from deig.intent_graph import (build_intent_graph, build_intent_graph_threshold,
+                               extract_hotspots, node_intent_attributes,
+                               select_edges_fixed_budget)
 from deig import viz
 import pandas as pd
 
@@ -50,7 +51,8 @@ class Logger:
         self.log.flush()
 
 
-def make_windows(T, W, H, train_frac=0.6, val_frac=0.2, stride=4):
+def make_windows(T, W, H, train_frac=0.6, val_frac=0.2, stride=4,
+                 start_datetime=None, step_minutes=5, exclude_intervals=None):
     """按预测目标时间划分窗口，而不是按窗口列表位置切分。
 
     t 是输入窗口结束索引：输入为 [t-W+1, ..., t]；
@@ -75,6 +77,21 @@ def make_windows(T, W, H, train_frac=0.6, val_frac=0.2, stride=4):
     va_t = all_t[(target_start >= train_cut) & (target_end < val_cut)]
     te_t = all_t[target_start >= val_cut]
 
+    if exclude_intervals:
+        base = pd.Timestamp(start_datetime)
+        excluded = []
+        for a, b in exclude_intervals:
+            ia = int(round((pd.Timestamp(a) - base).total_seconds() / 60 / step_minutes))
+            ib = int(round((pd.Timestamp(b) - base).total_seconds() / 60 / step_minutes))
+            excluded.append((ia, ib))
+        def valid(t):
+            spans = [(t - W + 1, t), (t + 1, t + H)]
+            return not any(max(x0, a) <= min(x1, b)
+                           for x0, x1 in spans for a, b in excluded)
+        tr_t = np.asarray([t for t in tr_t if valid(int(t))], dtype=np.int64)
+        va_t = np.asarray([t for t in va_t if valid(int(t))], dtype=np.int64)
+        te_t = np.asarray([t for t in te_t if valid(int(t))], dtype=np.int64)
+
     return (tr_t.tolist(), va_t.tolist(), te_t.tolist(),
             train_cut, val_cut)
 
@@ -98,6 +115,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="outputs")
     ap.add_argument("--epochs", type=int, default=2)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ap.add_argument("--flow-csv", default=os.path.join(root, "pems_spatial_kmeans_topK", "id_Env_A_timeseries_5m.csv"))
+    ap.add_argument("--coord-csv", default=os.path.join(root, "pems_spatial_kmeans_topK", "id_node_positions.csv"))
+    ap.add_argument("--step-minutes", type=int, default=5)
+    ap.add_argument("--window", type=int, default=12)
+    ap.add_argument("--horizon", type=int, default=1)
+    ap.add_argument("--stride", type=int, default=3)
+    ap.add_argument("--edge-seeds", type=int, default=5,
+                    help="random seeds for per-window edge ablation")
+    ap.add_argument("--viz-weeks", type=int, default=2,
+                    help="continuous test visualization/statistics span")
+    ap.add_argument("--max-steps", type=int, default=None, help="prefix-only smoke run; not a full-data experiment")
     ap.add_argument("--quick", action="store_true",
                     help="smaller/faster run for testing")
     ap.add_argument("--data-start", default="2025-01-01 00:00:00",
@@ -138,19 +167,20 @@ def main():
     from deig.data import load_csv
 
     # 指向你的真实数据目录
-    DATA_DIR = "../pems_spatial_kmeans_topK"
-    flow_csv = os.path.join(DATA_DIR, "id_standardize_Env_A_timeseries.csv")  # 根据实际文件名调整
-    coord_csv = os.path.join(DATA_DIR, "id_node_positions.csv")  # 根据实际文件名调整
+    flow_csv, coord_csv = args.flow_csv, args.coord_csv
 
-    data = load_csv(flow_csv, coord_csv, start_time=args.data_start)
+    if min(args.step_minutes, args.window, args.horizon, args.stride) < 1:
+        ap.error("step-minutes/window/horizon/stride must be positive")
+    data = load_csv(flow_csv, coord_csv, start_time=args.data_start,
+                    step_minutes=args.step_minutes, max_steps=args.max_steps)
 
     # 真实数据集下，窗口和训练轮次需根据数据规模重新设定
-    W, H, stride, epochs = 3, 1, 1, args.epochs
+    W, H, stride, epochs = args.window, args.horizon, args.stride, args.epochs
     N, T = data.X.shape
     start_datetime = pd.Timestamp(args.data_start)
 
-    print(f"[data] N={N} sensors, T={T} hourly steps "
-          f"({T/24:.0f} days), {len(data.true_chains)} corridors")
+    print(f"[data] N={N} sensors, T={T}, step={args.step_minutes} min "
+          f"({T*args.step_minutes/1440:.1f} days), {len(data.true_chains)} corridors")
 
     train_end = int(0.6 * T)
     pre = Preprocessor(train_end=train_end).fit_transform(data)
@@ -164,8 +194,15 @@ def main():
 
     # ---------------- windows ----------------
     # 构建窗口
+    missing_intervals = [
+        ("2025-02-01 05:45:00", "2025-02-01 23:55:00"),
+        ("2025-03-09 02:00:00", "2025-03-09 02:55:00"),
+    ]
     tr_t, va_t, te_t, train_cut, val_cut = make_windows(
-        T, W, H, stride=stride)
+        T, W, H, stride=stride, start_datetime=start_datetime,
+        step_minutes=args.step_minutes, exclude_intervals=missing_intervals)
+    if not all((tr_t, va_t, te_t)):
+        raise ValueError("Not enough data for nonempty train/val/test windows")
     print(f"[windows] train={len(tr_t)} val={len(va_t)} "
           f"test={len(te_t)} (split by prediction target time)")
     print(f"[windows] target-time cuts: train < {train_cut}, "
@@ -228,23 +265,24 @@ def main():
           f"persistence MAE={test_mae_persist:.4f}")
 
     # ---------------- edge-mask ablation ----------------
-    s_test = model.infer_scores(tb)          # per-edge scores for full test batch
-    E_total = s_test.size
-    k = max(1, int(0.1 * E_total))
-    order = np.argsort(s_test)
-    low_idx, top_idx = order[:k], order[-k:]
-    rand_idx = rng.choice(E_total, size=k, replace=False)
-
-    def mask_and_eval(mask_idx):
-        s2 = s_test.copy()
-        s2[mask_idx] = 0.0
-        p = model.infer_pred(tb, s_override=s2)
-        return mae(p, tb["target"])
-
-    abl = {"full": test_mae,
-           "mask_top": mask_and_eval(top_idx),
-           "mask_random": mask_and_eval(rand_idx),
-           "mask_low": mask_and_eval(low_idx)}
+    # Evaluate each window independently; pooled ranking would confound time
+    # windows and make the ablation dependent on test-set length.
+    s_test = np.asarray(model.infer_scores(tb)).reshape(len(te_t), -1)
+    abl_values = {"full": [], "mask_top": [], "mask_low": [], "mask_random": []}
+    for seed in range(max(1, args.edge_seeds)):
+        arng = np.random.default_rng(seed)
+        for wi in range(len(te_t)):
+            s_w = s_test[wi]
+            b = assemble_batch([te_in[wi]], [te_y[wi]], cand, rev)
+            abl_values["full"].append(mae(model.infer_pred(b), b["target"]))
+            for mode, key in (("top", "mask_top"), ("low", "mask_low"), ("random", "mask_random")):
+                sel = select_edges_fixed_budget(s_w, cand, fraction=0.10, mode=mode, rng=arng)
+                s2 = s_w.copy(); s2[sel["indices"]] = 0.0
+                abl_values[key].append(mae(model.infer_pred(b, s_override=s2), b["target"]))
+    abl = {k: float(np.mean(v)) for k, v in abl_values.items()}
+    abl["random_std"] = float(np.std(abl_values["mask_random"]))
+    abl["seeds"] = int(max(1, args.edge_seeds))
+    abl["selection_fraction"] = 0.10
     print(f"[ablation] {abl}")
 
     # ---------------- all valid-window intent graphs ----------------
@@ -285,19 +323,25 @@ def main():
 
     all_scores = np.concatenate(score_chunks, axis=0)  # (M_all, E)
 
+    val_scores = all_scores[len(tr_t):len(tr_t) + len(va_t)]
+    abs_threshold = float(np.quantile(val_scores.reshape(-1), 0.90))
+    print(f"[intent] validation absolute threshold={abs_threshold:.8g} "
+          f"(chosen from validation 90th percentile; test is not used)")
+
     # 每个窗口对应的完整时间语义。
     input_start_t = all_t - W + 1
     input_end_t = all_t
     target_start_t = all_t + 1
     target_end_t = all_t + H
 
-    base_time = np.datetime64(start_datetime.to_datetime64(), "h")
-    input_start_time = base_time + input_start_t.astype("timedelta64[h]")
-    input_end_time = base_time + input_end_t.astype("timedelta64[h]")
-    target_start_time = base_time + target_start_t.astype("timedelta64[h]")
-    target_end_time = base_time + target_end_t.astype("timedelta64[h]")
+    base_time = np.datetime64(start_datetime.to_datetime64(), "m")
+    input_start_time = base_time + (input_start_t * args.step_minutes).astype("timedelta64[m]")
+    input_end_time = base_time + (input_end_t * args.step_minutes).astype("timedelta64[m]")
+    target_start_time = base_time + (target_start_t * args.step_minutes).astype("timedelta64[m]")
+    target_end_time = base_time + (target_end_t * args.step_minutes).astype("timedelta64[m]")
 
     all_densities = []
+    topk_densities = {"top05": [], "top10": [], "top20": [], "absolute": []}
     all_hotspot_counts = []
     intent_graphs_data = []
 
@@ -307,6 +351,10 @@ def main():
         hotspots = extract_hotspots(g, min_size=2)
 
         all_densities.append(density)
+        for name, frac in (("top05", 0.05), ("top10", 0.10), ("top20", 0.20)):
+            topk_densities[name].append(float(np.ceil(frac * E) / max(1, E)))
+        ga = build_intent_graph_threshold(s, cand, abs_threshold)
+        topk_densities["absolute"].append(float(len(ga["strength"]) / max(1, N * (N - 1))))
         all_hotspot_counts.append(len(hotspots))
         intent_graphs_data.append({
             "input_end_t": int(input_end_t[idx]),
@@ -319,7 +367,10 @@ def main():
 
     # ---------------- 97 consecutive test windows for visualization ----------------
     viz_start_in_test = max(0, int(args.viz_start_test))
-    requested_viz_count = max(1, int(args.viz_count))
+    requested_viz_count = max(
+        int(args.viz_count),
+        int(round(args.viz_weeks * 7 * 24 * 60 / args.step_minutes / stride)),
+    )
     if viz_start_in_test >= len(te_t):
         raise ValueError(
             f"--viz-start-test={viz_start_in_test}超出测试窗口范围"
@@ -414,6 +465,11 @@ def main():
         intent_time=target_start_time,
         candidate_edge_feats=cand["edge_feats"],
         intent_quantile_q=np.float64(intent_q),
+        abs_threshold=np.float64(abs_threshold),
+        top05_density=np.asarray(topk_densities["top05"], dtype=np.float32),
+        top10_density=np.asarray(topk_densities["top10"], dtype=np.float32),
+        top20_density=np.asarray(topk_densities["top20"], dtype=np.float32),
+        absolute_density=np.asarray(topk_densities["absolute"], dtype=np.float32),
     )
     print(f"[save] All-window edge intent scores saved to {npz_path}")
 
@@ -445,6 +501,7 @@ def main():
         candidate_edges=cand["edges"],
         coords=data.coords,
         intent_quantile_q=np.float64(intent_q),
+        abs_threshold=np.float64(abs_threshold),
     )
     print(f"[save] All-window intent graph data saved to {intent_g_npz_path}")
 
@@ -454,6 +511,10 @@ def main():
     summary = {
         "timestamp": timestamp,
         "data_start": str(start_datetime),
+        "flow_csv": os.path.abspath(flow_csv),
+        "step_minutes": args.step_minutes,
+        "max_steps": args.max_steps,
+        "run_scope": "prefix_smoke" if args.max_steps else "full_data",
         "N": int(N), "T": int(T), "W": W, "H": H,
         "stride": stride,
         "candidate_edges": int(cand["E"]),
@@ -469,9 +530,15 @@ def main():
         "intent_windows_saved": int(M_all),
         "intent_time_definition": "prediction target start time",
         "intent_quantile_q": intent_q,
+        "validation_absolute_threshold": abs_threshold,
+        "absolute_threshold_rule": "90th percentile of validation-window edge scores",
+        "missing_intervals_excluded": missing_intervals,
+        "edge_ablation_selection": "per-window top/low/random 10%",
+        "edge_ablation_seeds": int(max(1, args.edge_seeds)),
         "visualization_split": "test",
         "visualization_contiguous": True,
         "visualization_count": int(n_show),
+        "visualization_span_weeks": int(args.viz_weeks),
         "visualization_start_test_index": int(viz_start_in_test),
         "visualization_target_start": time_text(
             target_start_time[viz_indices[0]]),
@@ -529,7 +596,8 @@ def main():
         "timestamp": timestamp,
         "N_sensors": int(N),
         "T_timesteps": int(T),
-        "days": float(T / 24),
+        "days": float(T * args.step_minutes / 1440),
+        "step_minutes": args.step_minutes,
         "W_window_size": W,
         "H_horizon": H,
         "stride": stride,

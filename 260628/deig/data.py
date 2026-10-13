@@ -114,7 +114,7 @@ class TrafficData:
 #                        true_chains=chains)
 
 
-def load_csv(flow_path, coord_path, start_time="2025-01-01 00:00:00"):
+def load_csv(flow_path, coord_path, start_time="2025-01-01 00:00:00", step_minutes=60, max_steps=None):
     """读取原始流量和坐标，并构造真实的小时/星期时间特征。
 
     注意：这里只负责读取数据，不再调用Preprocessor。标准化、异常裁剪、
@@ -125,7 +125,9 @@ def load_csv(flow_path, coord_path, start_time="2025-01-01 00:00:00"):
     coords = coord_df[["x", "y"]].values.astype(np.float32)
 
     # 2. 读取流量数据，转换为(N, T)
-    flow_df = pd.read_csv(flow_path)
+    flow_df = pd.read_csv(flow_path, nrows=max_steps)
+    if "node_id" in coord_df and flow_df.columns.tolist() != coord_df.node_id.astype(str).tolist():
+        raise ValueError("Flow columns must match coordinate node_id order")
     X = flow_df.values.T.astype(float)
 
     if X.shape[0] != coords.shape[0]:
@@ -135,8 +137,8 @@ def load_csv(flow_path, coord_path, start_time="2025-01-01 00:00:00"):
 
     # 缺失值和异常值由Preprocessor统一处理。
     T = X.shape[1]
-    timestamps = pd.date_range(start_time, periods=T, freq="h")
-    hour = timestamps.hour.to_numpy()
+    timestamps = pd.date_range(start_time, periods=T, freq=f"{step_minutes}min")
+    hour = timestamps.hour.to_numpy() + timestamps.minute.to_numpy() / 60
     weekday = timestamps.dayofweek.to_numpy()
 
     return TrafficData(
@@ -192,7 +194,7 @@ class Preprocessor:
         # 6. periodic residual: subtract train mean per (hour, weekday)
         R = np.zeros_like(Z)
         period_mean = {}
-        for h in range(24):
+        for h in np.unique(hour):
             for w in range(7):
                 mask = (hour == w * 0 + h) & (weekday == w)  # hour h & weekday w
                 train_mask = mask.copy()

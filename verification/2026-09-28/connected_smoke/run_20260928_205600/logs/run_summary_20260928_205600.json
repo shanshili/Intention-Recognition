@@ -1,0 +1,63 @@
+{
+  "output_dir": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\connected_smoke\\run_20260928_205600",
+  "model_path": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\connected_smoke\\run_20260928_205600\\models\\ratcgf_model_20260928_205600.pt",
+  "N": 6,
+  "n_show": 93,
+  "valid_centers": 91,
+  "used_synthetic": {
+    "flow": false,
+    "coords": false,
+    "causal": false,
+    "intent": false,
+    "node_feat": false
+  },
+  "time_axis": {
+    "pos0": "2025-01-01 00:00:00",
+    "last_pos": 95,
+    "last_time": "2025-01-04 23:00:00",
+    "step_minutes": 60
+  },
+  "intent_alignment": {
+    "method": "explicit_tail_alignment",
+    "intent_start_pos": 3,
+    "intent_end_pos": 95,
+    "intent_start_time": "2025-01-01 03:00:00",
+    "intent_end_time": "2025-01-04 23:00:00",
+    "n_show": 93
+  },
+  "best_val": 1.1495909553927344,
+  "deploy_source_split": "val",
+  "deploy_start_time": null,
+  "deploy_end_time": null,
+  "deploy_steps": 2,
+  "deploy_centers": [
+    90,
+    91
+  ],
+  "deployment_metrics_csv": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\connected_smoke\\run_20260928_205600\\deployment_metrics.csv",
+  "mean_num_nodes": 6.0,
+  "mean_num_edges": 29.0,
+  "mean_cost": 11.799999999999988,
+  "mean_u_track": 0.9655172413460167,
+  "mean_u_elastic": 0.8989150376522836,
+  "mean_total_utility": 0.5388828061658172,
+  "views_start_time": null,
+  "views_end_time": null,
+  "views_requested_steps": 1,
+  "views_exported_steps": 1,
+  "view_folders": [
+    "consensus",
+    "intent_residual",
+    "causal_inactive",
+    "intent_persist",
+    "intent_new",
+    "intent_decay"
+  ],
+  "plot_style": {
+    "policy": "strictly_preserve_previous_style",
+    "network_and_derived_views": "visualize.py original quiver style",
+    "input_and_reference_views": "viz_causal_style.py PCMCI MultiDiGraph style",
+    "standalone_input_plots": "viz_inputs.py original style",
+    "allowed_changes": "time labels, unique filenames, output directories only"
+  }
+}

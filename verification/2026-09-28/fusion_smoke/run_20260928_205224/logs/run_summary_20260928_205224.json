@@ -1,0 +1,63 @@
+{
+  "output_dir": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\fusion_smoke\\run_20260928_205224",
+  "model_path": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\fusion_smoke\\run_20260928_205224\\models\\ratcgf_model_20260928_205224.pt",
+  "N": 6,
+  "n_show": 12,
+  "valid_centers": 10,
+  "used_synthetic": {
+    "flow": true,
+    "coords": true,
+    "causal": true,
+    "intent": true,
+    "node_feat": false
+  },
+  "time_axis": {
+    "pos0": "2025-01-01 00:00:00",
+    "last_pos": 47,
+    "last_time": "2025-01-02 23:00:00",
+    "step_minutes": 60
+  },
+  "intent_alignment": {
+    "method": "explicit_tail_alignment",
+    "intent_start_pos": 36,
+    "intent_end_pos": 47,
+    "intent_start_time": "2025-01-02 12:00:00",
+    "intent_end_time": "2025-01-02 23:00:00",
+    "n_show": 12
+  },
+  "best_val": 1.3287715539336205,
+  "deploy_source_split": "val",
+  "deploy_start_time": null,
+  "deploy_end_time": null,
+  "deploy_steps": 2,
+  "deploy_centers": [
+    9,
+    10
+  ],
+  "deployment_metrics_csv": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\fusion_smoke\\run_20260928_205224\\deployment_metrics.csv",
+  "mean_num_nodes": 6.0,
+  "mean_num_edges": 18.0,
+  "mean_cost": 9.599999999999998,
+  "mean_u_track": 0.7213622290620154,
+  "mean_u_elastic": 0.8915515163087384,
+  "mean_total_utility": 0.48645687268537696,
+  "views_start_time": null,
+  "views_end_time": null,
+  "views_requested_steps": 1,
+  "views_exported_steps": 1,
+  "view_folders": [
+    "consensus",
+    "intent_residual",
+    "causal_inactive",
+    "intent_persist",
+    "intent_new",
+    "intent_decay"
+  ],
+  "plot_style": {
+    "policy": "strictly_preserve_previous_style",
+    "network_and_derived_views": "visualize.py original quiver style",
+    "input_and_reference_views": "viz_causal_style.py PCMCI MultiDiGraph style",
+    "standalone_input_plots": "viz_inputs.py original style",
+    "allowed_changes": "time labels, unique filenames, output directories only"
+  }
+}

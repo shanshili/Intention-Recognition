@@ -1,0 +1,25 @@
+[run] timestamp = 20260928_205219
+[run] output directory = D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219
+[data] N=6 sensors, T=96 hourly steps (4 days), 0 corridors
+[graph] candidate edges |E0|=28
+[windows] train=54 val=19 test=20 (split by prediction target time)
+[windows] target-time cuts: train < 57, val < 76, test >= 76
+[feat] building window features (train/val/test)...
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=10570
+[train] starting...
+  epoch   0  L_pred=8.5156  L_total=8.5767  val_MAE=1.7211
+[test] DEIG-TCN MAE=1.8147  persistence MAE=0.2366
+[ablation] {'full': 1.81472238375946, 'mask_top': 1.8231105632581845, 'mask_random': 1.8225977194972458, 'mask_low': 1.8438777756421725}
+[intent] inferring all valid windows: M=93, E=28, batch=64...
+  [intent] 64/93
+  [intent] 93/93
+[viz] 2 consecutive test windows: target 2025-01-04 04:00:00 -> 2025-01-04 05:00:00
+[viz] writing figures...
+[save] All-window edge intent scores saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\edge_intent_scores_20260928_205219.npz
+[save] All-window intent graph data saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\intent_graphs_data_20260928_205219.npz
+[save] Model parameters saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\model_params_20260928_205219.npz
+[save] Sensor time series plot saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\sensor_timeseries_20260928_205219
+[save] Time series data saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\timeseries_data_20260928_205219.csv
+[save] Sensor coordinates saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\sensor_coords_20260928_205219.csv
+[save] Data specification saved to D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219\data_spec_20260928_205219.json
+[done] outputs in D:\Tjnu-p\Mp\Intention Recognition\verification\2026-09-28\intent_smoke\20260928_205219

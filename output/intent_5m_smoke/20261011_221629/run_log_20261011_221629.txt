@@ -1,0 +1,26 @@
+[run] timestamp = 20261011_221629
+[run] output directory = output/intent_5m_smoke\20261011_221629
+[data] N=100 sensors, T=576, step=5 min (2.0 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=342 val=115 test=116 (split by prediction target time)
+[windows] target-time cuts: train < 345, val < 460, test >= 460
+[feat] building window features (train/val/test)...
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=10570
+[train] starting...
+  epoch   0  L_pred=1.6008  L_total=1.6060  val_MAE=0.7117
+  epoch   1  L_pred=0.0448  L_total=0.0465  val_MAE=0.2449
+[test] DEIG-TCN MAE=0.2818  persistence MAE=0.0809
+[ablation] {'full': 0.2817680874308848, 'mask_top': 0.30696846847435383, 'mask_random': 0.28145703331756816, 'mask_low': 0.2817645422670219}
+[intent] inferring all valid windows: M=573, E=488, batch=64...
+  [intent] 64/573
+  [intent] 573/573
+[viz] 10 consecutive test windows: target 2025-01-02 14:20:00 -> 2025-01-02 15:05:00
+[viz] writing figures...
+[save] All-window edge intent scores saved to output/intent_5m_smoke\20261011_221629\edge_intent_scores_20261011_221629.npz
+[save] All-window intent graph data saved to output/intent_5m_smoke\20261011_221629\intent_graphs_data_20261011_221629.npz
+[save] Model parameters saved to output/intent_5m_smoke\20261011_221629\model_params_20261011_221629.npz
+[save] Sensor time series plot saved to output/intent_5m_smoke\20261011_221629\sensor_timeseries_20261011_221629
+[save] Time series data saved to output/intent_5m_smoke\20261011_221629\timeseries_data_20261011_221629.csv
+[save] Sensor coordinates saved to output/intent_5m_smoke\20261011_221629\sensor_coords_20261011_221629.csv
+[save] Data specification saved to output/intent_5m_smoke\20261011_221629\data_spec_20261011_221629.json
+[done] outputs in output/intent_5m_smoke\20261011_221629

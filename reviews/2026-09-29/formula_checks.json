@@ -1,0 +1,43 @@
+{
+  "scope": "Algebra and implementation checks, not forecasting performance",
+  "W3_dynamic_lag_corr": 0.0,
+  "difference_feature_fold_max_error": 1.7763568394002505e-15,
+  "shared_calendar_logit_shift": {
+    "base_logits": [
+      -2.0,
+      0.4,
+      1.3
+    ],
+    "weights_shift_0": [
+      0.11494928933645021,
+      0.25582434811939275,
+      0.629226362544157
+    ],
+    "weights_shift_3": [
+      0.02555204209497574,
+      0.2816646668984965,
+      0.6927832910065278
+    ],
+    "weights_shift_4": [
+      0.025552042094975736,
+      0.28166466689849656,
+      0.6927832910065277
+    ],
+    "ranking_all_cases": [
+      0,
+      1,
+      2
+    ]
+  },
+  "trend_window_mismatch": {
+    "sequence_including_one_previous_step": [
+      2.0,
+      1.0,
+      4.0,
+      3.0
+    ],
+    "W": 3,
+    "note_internal_differences": 1.0,
+    "code_window_of_precomputed_differences": 0.3333333333333333
+  }
+}

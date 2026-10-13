@@ -1,0 +1,33 @@
+[run] timestamp = 20261011_221736
+[run] output directory = output/intent_5m_full_stride12\20261011_221736
+[data] N=100 sensors, T=61056, step=5 min (212.0 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=3053 val=1018 test=1017 (split by prediction target time)
+[windows] target-time cuts: train < 36633, val < 48844, test >= 48844
+[feat] building window features (train/val/test)...
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=10570
+[train] starting...
+  epoch   0  L_pred=0.2077  L_total=0.2085  val_MAE=0.0999
+  epoch   1  L_pred=0.0123  L_total=0.0123  val_MAE=0.0820
+[test] DEIG-TCN MAE=0.0849  persistence MAE=0.0780
+[ablation] {'full': 0.08486433537880858, 'mask_top': 0.08724015894786934, 'mask_random': 0.0849388285789367, 'mask_low': 0.08486433537880858}
+[intent] inferring all valid windows: M=5088, E=488, batch=64...
+  [intent] 64/5088
+  [intent] 640/5088
+  [intent] 1280/5088
+  [intent] 1920/5088
+  [intent] 2560/5088
+  [intent] 3200/5088
+  [intent] 3840/5088
+  [intent] 4480/5088
+  [intent] 5088/5088
+[viz] 10 consecutive test windows: target 2025-06-19 15:15:00 -> 2025-06-20 00:15:00
+[viz] writing figures...
+[save] All-window edge intent scores saved to output/intent_5m_full_stride12\20261011_221736\edge_intent_scores_20261011_221736.npz
+[save] All-window intent graph data saved to output/intent_5m_full_stride12\20261011_221736\intent_graphs_data_20261011_221736.npz
+[save] Model parameters saved to output/intent_5m_full_stride12\20261011_221736\model_params_20261011_221736.npz
+[save] Sensor time series plot saved to output/intent_5m_full_stride12\20261011_221736\sensor_timeseries_20261011_221736
+[save] Time series data saved to output/intent_5m_full_stride12\20261011_221736\timeseries_data_20261011_221736.csv
+[save] Sensor coordinates saved to output/intent_5m_full_stride12\20261011_221736\sensor_coords_20261011_221736.csv
+[save] Data specification saved to output/intent_5m_full_stride12\20261011_221736\data_spec_20261011_221736.json
+[done] outputs in output/intent_5m_full_stride12\20261011_221736

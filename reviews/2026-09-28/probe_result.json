@@ -1,0 +1,72 @@
+{
+  "scope": "Synthetic forward/backward architecture diagnostic, not a performance experiment",
+  "torch_version": "2.10.0+cpu",
+  "prediction_loss_gradients": {
+    "encoder": {
+      "parameter_tensors": 133,
+      "tensors_with_gradient": 133,
+      "gradient_l1": 8.608476827880509
+    },
+    "global_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 0.04748684400692582
+    },
+    "node_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 0,
+      "gradient_l1": 0
+    },
+    "edge_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 0,
+      "gradient_l1": 0
+    },
+    "node_score_head": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 0,
+      "gradient_l1": 0
+    },
+    "predictor": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 1.486268937587738
+    }
+  },
+  "total_loss_gradients": {
+    "encoder": {
+      "parameter_tensors": 133,
+      "tensors_with_gradient": 133,
+      "gradient_l1": 8.608909593063267
+    },
+    "global_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 0.04827602719888091
+    },
+    "node_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 5.937995865679113e-06
+    },
+    "edge_gate": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 0.00098862684899359
+    },
+    "node_score_head": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 0,
+      "gradient_l1": 0
+    },
+    "predictor": {
+      "parameter_tensors": 4,
+      "tensors_with_gradient": 4,
+      "gradient_l1": 1.486268937587738
+    }
+  },
+  "edge_gate_perturbation": {
+    "max_prediction_change": 0.0,
+    "max_fused_edge_change": 0.6327540874481201
+  }
+}

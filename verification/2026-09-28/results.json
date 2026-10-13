@@ -1,0 +1,640 @@
+{
+  "scope": "Functional audit with small synthetic fixtures, not performance validation",
+  "environment": {
+    "python": "3.10.0 (tags/v3.10.0:b494f59, Oct  4 2021, 19:00:18) [MSC v.1929 64 bit (AMD64)]",
+    "torch": "2.12.0+cpu",
+    "numpy": "2.2.6",
+    "cuda": false
+  },
+  "checks": [
+    {
+      "name": "all_version_python_syntax",
+      "status": "PASS",
+      "detail": {
+        "files": 94,
+        "failures": []
+      }
+    },
+    {
+      "name": "version_main_help_imports",
+      "status": "PASS",
+      "detail": [
+        {
+          "version": "260627",
+          "returncode": 0,
+          "stderr": ""
+        },
+        {
+          "version": "260628",
+          "returncode": 0,
+          "stderr": ""
+        },
+        {
+          "version": "260706/ratcgf",
+          "returncode": 0,
+          "stderr": ""
+        },
+        {
+          "version": "260706_2",
+          "returncode": 0,
+          "stderr": ""
+        },
+        {
+          "version": "260731",
+          "returncode": 0,
+          "stderr": ""
+        }
+      ]
+    },
+    {
+      "name": "latest_time_alignment_contract",
+      "status": "PASS",
+      "detail": {
+        "first_intent_pos": 143,
+        "first_sample_pos": 144,
+        "target_pos": 145,
+        "deployment_time": "2025-01-07 00:00:00",
+        "target_time": "2025-01-07 01:00:00"
+      }
+    },
+    {
+      "name": "existing_time_test_directly_runnable",
+      "status": "FAIL",
+      "detail": {
+        "returncode": 1,
+        "stderr": "Traceback (most recent call last):\n  File \"D:\\Tjnu-p\\Mp\\Intention Recognition\\260731\\tests\\test_time_alignment.py\", line 4, in <module>\n    from ratcgf.config import Config\nModuleNotFoundError: No module named 'ratcgf'\n"
+      }
+    },
+    {
+      "name": "upstream_timestamp_metadata_preserved",
+      "status": "FAIL",
+      "detail": {
+        "upstream_intent_time_t": [
+          3,
+          6,
+          9
+        ],
+        "actual": [
+          9,
+          10,
+          11
+        ],
+        "method": "explicit_tail_alignment",
+        "loaded_keys": [
+          "edges_list",
+          "strength_list",
+          "delta_list"
+        ]
+      }
+    },
+    {
+      "name": "default_configuration_has_deployable_inputs",
+      "status": "FAIL",
+      "detail": {
+        "data_dir": "C:\\Work-lcr\\Tjnu-p\\Mp\\Intention-Recognition\\pems_spatial_kmeans_topK",
+        "path_exists": false,
+        "used_synthetic": {
+          "flow": true,
+          "coords": true,
+          "causal": true,
+          "intent": true,
+          "node_feat": false
+        },
+        "selected_centers": 0,
+        "time_range": [
+          "2025-07-24 22:00:00",
+          "2025-07-31 23:00:00"
+        ]
+      }
+    },
+    {
+      "name": "strict_data_rejects_missing_inputs",
+      "status": "PASS",
+      "detail": "Strict mode rejects missing flow/graph files."
+    },
+    {
+      "name": "time_selection_modes",
+      "status": "PASS",
+      "detail": "stride then latest/earliest/uniform selection"
+    },
+    {
+      "name": "fusion_encoder_receives_prediction_gradient",
+      "status": "PASS",
+      "detail": {
+        "with_grad": 77,
+        "l1": 3.3329893759498646
+      }
+    },
+    {
+      "name": "local_edge_gates_receive_prediction_gradient",
+      "status": "FAIL",
+      "detail": {
+        "node_gate": {
+          "with_grad": 0,
+          "l1": 0
+        },
+        "edge_gate": {
+          "with_grad": 0,
+          "l1": 0
+        }
+      }
+    },
+    {
+      "name": "node_score_head_is_trained",
+      "status": "FAIL",
+      "detail": {
+        "with_grad": 0,
+        "l1": 0
+      }
+    },
+    {
+      "name": "fused_edge_changes_affect_prediction",
+      "status": "FAIL",
+      "detail": {
+        "max_prediction_change": 0.0,
+        "max_fused_edge_change": 0.4983981251716614
+      }
+    },
+    {
+      "name": "encoder_uses_time_varying_view_sequence",
+      "status": "FAIL",
+      "detail": {
+        "time_steps": 3,
+        "identical_adjacency_at_all_steps": true
+      }
+    },
+    {
+      "name": "joint_gate_stays_normalized_under_saturation",
+      "status": "FAIL",
+      "detail": {
+        "min_alpha_sum": 3.609702702030954e-27,
+        "max_alpha_sum": 3.609702702030954e-27,
+        "logit_gap": 80
+      }
+    },
+    {
+      "name": "directed_message_flows_source_to_destination",
+      "status": "FAIL",
+      "detail": {
+        "edge": "0 -> 1",
+        "node_features": [
+          5,
+          2
+        ],
+        "expected_incoming_neighbor_message": [
+          0,
+          5
+        ],
+        "actual": [
+          2.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "name": "budget_endpoint_and_cost_invariants",
+      "status": "PASS",
+      "detail": {
+        "random_cases": 200,
+        "failures": []
+      }
+    },
+    {
+      "name": "upstream_gat_tcn_edge_head_prediction_gradients",
+      "status": "PASS",
+      "detail": {
+        "gat": 58.73525260093962,
+        "tcn": 31.805307189504276,
+        "edge_head": 4.032101900618602
+      }
+    },
+    {
+      "name": "upstream_sampled_gradient_finite_difference",
+      "status": "PASS",
+      "detail": [
+        {
+          "group": "gat",
+          "analytic": 4.417838261431244,
+          "numeric": 4.417838261439044,
+          "abs_error": 7.7999828818065e-12
+        },
+        {
+          "group": "tcn",
+          "analytic": 2.5008290915421525,
+          "numeric": 2.5008290915451425,
+          "abs_error": 2.9900526499204716e-12
+        },
+        {
+          "group": "edge_head",
+          "analytic": 0.4226013080187104,
+          "numeric": 0.4226013088803881,
+          "abs_error": 8.616777291692301e-10
+        }
+      ]
+    },
+    {
+      "name": "upstream_intent_edge_ablation_changes_prediction",
+      "status": "PASS",
+      "detail": {
+        "max_prediction_change": 0.4474256430714121
+      }
+    },
+    {
+      "name": "default_three_step_window_has_lag_features",
+      "status": "FAIL",
+      "detail": {
+        "default_W": 3,
+        "minimum_samples_after_lag": 4,
+        "short_result": 0.0,
+        "long_result": 1.0
+      }
+    },
+    {
+      "name": "upstream_end_to_end_train_export",
+      "status": "PASS",
+      "detail": {
+        "returncode": 0,
+        "saved_windows": 93,
+        "expected_windows": 93,
+        "log": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\intent_smoke.log",
+        "stderr_tail": "ckages\\joblib\\externals\\loky\\backend\\context.py:131: UserWarning: Could not find the number of physical cores for the following reason:\n[WinError 2] 系统找不到指定的文件。\nReturning the number of logical cores instead. You can silence this warning by setting LOKY_MAX_CPU_COUNT to the number of cores you want to use.\n  warnings.warn(\n  File \"D:\\Tjnu-p\\Mp\\Intention Recognition\\.venv\\lib\\site-packages\\joblib\\externals\\loky\\backend\\context.py\", line 247, in _count_physical_cores\n    cpu_count_physical = _count_physical_cores_win32()\n  File \"D:\\Tjnu-p\\Mp\\Intention Recognition\\.venv\\lib\\site-packages\\joblib\\externals\\loky\\backend\\context.py\", line 299, in _count_physical_cores_win32\n    cpu_info = subprocess.run(\n  File \"C:\\Users\\90768\\AppData\\Local\\Programs\\Python\\Python310\\lib\\subprocess.py\", line 501, in run\n    with Popen(*popenargs, **kwargs) as process:\n  File \"C:\\Users\\90768\\AppData\\Local\\Programs\\Python\\Python310\\lib\\subprocess.py\", line 966, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"C:\\Users\\90768\\AppData\\Local\\Programs\\Python\\Python310\\lib\\subprocess.py\", line 1435, in _execute_child\n    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,\n"
+      }
+    },
+    {
+      "name": "unit_stride_full_export_alignment",
+      "status": "PASS",
+      "detail": {
+        "method": "explicit_tail_alignment",
+        "actual_first": 3,
+        "expected_first": 3,
+        "note": "Full unit-stride export aligns by tail length despite metadata being ignored; sparse fixture is tested separately."
+      }
+    },
+    {
+      "name": "fusion_end_to_end_train_deploy_export",
+      "status": "PASS",
+      "detail": {
+        "output": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\fusion_smoke\\run_20260928_205224",
+        "deploy_steps": 2,
+        "view_steps": 1,
+        "arrays": 2,
+        "png_images": 15,
+        "best_val": 1.3287715539336205,
+        "used_synthetic": {
+          "flow": true,
+          "coords": true,
+          "causal": true,
+          "intent": true,
+          "node_feat": false
+        },
+        "figure_formats_tested": [
+          "png"
+        ]
+      }
+    },
+    {
+      "name": "realtime_latest_observation_can_be_deployed_without_label",
+      "status": "FAIL",
+      "detail": {
+        "latest_observed_pos": 47,
+        "last_deployable_pos": 46,
+        "build_latest_error": "IndexError: index 48 is out of bounds for axis 1 with size 48",
+        "reason": "SampleBuilder shares supervised target and next-graph requirements with deployment inference."
+      }
+    },
+    {
+      "name": "upstream_missing_value_fill_is_causal",
+      "status": "FAIL",
+      "detail": {
+        "query_time": 8,
+        "only_changed_time": 9,
+        "max_change_at_or_before_query_time": 0.8910012393844793,
+        "condition": "Missing observation at t=8 is linearly interpolated using t=9."
+      }
+    },
+    {
+      "name": "fusion_missing_value_fill_is_causal",
+      "status": "FAIL",
+      "detail": {
+        "query_time": 8,
+        "only_changed_time": 9,
+        "max_change_at_or_before_query_time": 0.27272727272727293,
+        "condition": "load_flow fills missing values using the whole-series mean."
+      }
+    },
+    {
+      "name": "r1_next_target_graph_is_available_with_latest_upstream_semantics",
+      "status": "PASS",
+      "detail": {
+        "interpretation": "For H=1, stride=1 and intent_time=input_end+1, graph labelled t+1 only needs observations through t. A_I_next alone is not proof of future leakage.",
+        "metadata_enforced_by_fusion_loader": false
+      }
+    },
+    {
+      "name": "actual_upstream_npz_to_fusion_train_deploy",
+      "status": "PASS",
+      "detail": {
+        "output": "D:\\Tjnu-p\\Mp\\Intention Recognition\\verification\\2026-09-28\\connected_smoke\\run_20260928_205600",
+        "n_show": 93,
+        "valid_centers": 91,
+        "used_synthetic_fallback": {
+          "flow": false,
+          "coords": false,
+          "causal": false,
+          "intent": false,
+          "node_feat": false
+        },
+        "note": "Every input is a locally generated test fixture; no fallback and no real-data performance claim."
+      }
+    },
+    {
+      "name": "upstream_target_intervals_do_not_cross_splits",
+      "status": "PASS",
+      "detail": {
+        "horizons_tested": [
+          1,
+          3,
+          6
+        ]
+      }
+    }
+  ],
+  "evidence": {
+    "version_comparison": {
+      "260627 -> 260628": {
+        "identical": [
+          "deig/__init__.py",
+          "deig/graph.py",
+          "deig/intent_graph.py"
+        ],
+        "changed": [
+          "__init__.py",
+          "deig/autograd.py",
+          "deig/data.py",
+          "deig/features.py",
+          "deig/model.py",
+          "deig/viz.py",
+          "main.py",
+          "video.py"
+        ]
+      },
+      "260628 -> 260706/ratcgf": {
+        "identical": [],
+        "changed": [
+          "__init__.py",
+          "main.py"
+        ]
+      },
+      "260706/ratcgf -> 260706_2": {
+        "identical": [
+          "__init__.py",
+          "autograd.py",
+          "config.py",
+          "data_io.py",
+          "dataset.py",
+          "deploy.py",
+          "diag_data.py",
+          "model.py",
+          "modules/__init__.py",
+          "modules/module1_residual.py",
+          "modules/module2_encoder.py",
+          "modules/module3_gating.py",
+          "nn.py",
+          "train.py",
+          "utils/__init__.py",
+          "utils/data_loading.py",
+          "utils/io_utils.py",
+          "utils/preprocess.py"
+        ],
+        "changed": [
+          "main.py",
+          "modules/module4_deploy.py",
+          "views.py",
+          "visualize.py",
+          "viz_causal_style.py",
+          "viz_inputs.py"
+        ]
+      },
+      "260706_2 -> 260731": {
+        "identical": [
+          "model.py",
+          "modules/module1_residual.py",
+          "modules/module2_encoder.py",
+          "modules/module3_gating.py",
+          "train.py",
+          "viz_causal_style.py"
+        ],
+        "changed": [
+          "__init__.py",
+          "config.py",
+          "dataset.py",
+          "main.py",
+          "modules/__init__.py",
+          "modules/module4_deploy.py",
+          "utils/__init__.py",
+          "utils/data_loading.py",
+          "utils/io_utils.py",
+          "utils/preprocess.py",
+          "visualize.py",
+          "viz_inputs.py"
+        ]
+      }
+    },
+    "source_sha256": {
+      "260601.py": "c7ebb7ff5258614f8cce05fd1a5830c945953b07a753a38559d33f92e2a243f1",
+      "260604.py": "16db4e6275236e9c462a3d0fd20f882ca5f6ef691582ea0ccfb3e460c78f6a68",
+      "260604_TCN.py": "a90627b51a384dc6ff06437fccf1b7e8441597e23644f88418452ae7ee9ef37a",
+      "260627/main.py": "85900b0d2fb9dc78ad03ec1a1c9171f3297647fbc2cb63ce71c658cbfc3f163b",
+      "260627/video.py": "916b0429f83694fc3d34b0a1aea848d79d8e7adf5d17f6e7956042015d820f42",
+      "260627/__init__.py": "3a557a9f0a9b9ed7b5008ee271bb21c5afd9f457a2230c4073546b492b5dea5a",
+      "260627/deig/autograd.py": "fcdc28844089f7ace4894f54f31de7229850bad2bd75dd12b3bf4fe123a5e70d",
+      "260627/deig/data.py": "41857e9a4e7b8a34b9fb95788f6121142fd9fff8f7c1ba0a1a61cb0bf8f9f113",
+      "260627/deig/features.py": "ad586f7c23d32556cf9bf17de4a0499f6c0a4fbb853bfab2c18bee8cbcfadd20",
+      "260627/deig/graph.py": "38a7bc8dd23f084dcbabd63b8da6b9619f6f213613ea9ecf842d8167b7ad9176",
+      "260627/deig/intent_graph.py": "fe17653306cbcc7b20bb5c93cb2f7013d63b3ed44b559c497522d25d65cbb852",
+      "260627/deig/model.py": "e74b2bb7dff8ea005cc18f577532f343bfd4b335f816e312d9c031535d0bedff",
+      "260627/deig/viz.py": "1e9b870a7bf28c37b89050d93b0abb6c6d810e1e7c69bccc2f01c874a02a9a72",
+      "260627/deig/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "260628/main.py": "32b2159f994f45d3c7792595d397b7cfd02b9f9713e6964d4a34ca2df5807110",
+      "260628/video-2.py": "2d74af694ef75e0be8287fb44dd5e1b4c1ad4f10311a3b8df0d7edccf8248bb2",
+      "260628/video.py": "1a263461a8ae691fe44e0acc891c3961162a9419fdfb4242834cab313f7450c9",
+      "260628/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "260628/deig/autograd.py": "12f082f3b49eb5955316503a98015c2dd32e9fb7205eb76f1a5acc48dd51c10f",
+      "260628/deig/data.py": "ff8d4d1c46d8371ffd4252de1c5d7644578e7377f9532688d9575103cbc1cd03",
+      "260628/deig/features.py": "269a9accf3bd696b833fa96527f93fc46fe192e245f383a71ad26f295d40c5ea",
+      "260628/deig/gat_tcn.py": "429e801c2cc9fa098aa6fa4317adc4ae61e9bddfc74ce3257d45fa0cece8f400",
+      "260628/deig/graph.py": "38a7bc8dd23f084dcbabd63b8da6b9619f6f213613ea9ecf842d8167b7ad9176",
+      "260628/deig/intent_graph.py": "fe17653306cbcc7b20bb5c93cb2f7013d63b3ed44b559c497522d25d65cbb852",
+      "260628/deig/model.py": "a5bc64ae539554f4d790301e455476df75329f52d5c4dceb0480957198c3654d",
+      "260628/deig/viz.py": "940c23d59c418a5d07411075315de1803d84e69df86e55852b36003cc193615a",
+      "260628/deig/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "260706/ratcgf/autograd.py": "f5dc339eb94542b620b7eec0d14a363a25355924bf4d3cd6649891e1f0576d88",
+      "260706/ratcgf/config.py": "5c6857131d371e7f1cc5bdb74a3ba673a6a98ec118585b5832f0bd140c35b89e",
+      "260706/ratcgf/dataset.py": "447d905e34712543090ba1bfb7a00ca349e4917ddc44e5a95bfebf62a66b5d2d",
+      "260706/ratcgf/data_io.py": "928d9a1a5bf9b36c16e7642bb8368998a4e7bae9e1d4a1fffb322ce7b93d23fd",
+      "260706/ratcgf/deploy.py": "9d7a813e7b47ec37c6c060c27df77117dae266330cf71c475a833953e674063a",
+      "260706/ratcgf/diag_data.py": "2d305fa9d122946b994286da7c46294235c6f5dc6e41583f7d21867bcf908a77",
+      "260706/ratcgf/main.py": "f269e5a25515dfad2ffc15e29a5e0809bb45a3abb83a456d53ec1a0dc82f90fb",
+      "260706/ratcgf/model.py": "004797b2be07506452e4b719edef7b62031134acf0a5023418f00abeccf555bc",
+      "260706/ratcgf/nn.py": "feab38d024cb3f8336b0a3ed5de96a4cfd6d6e34d48e6cecfdc60234c9c8e1fd",
+      "260706/ratcgf/train.py": "b31852baac2fd76ab66b2a1af09b3d227291a2954ccf24cf0bab66f8c9e83f02",
+      "260706/ratcgf/views.py": "859a56a62e37afeee31da688d5d9f5e43392ddf3722f5a2d42614757f7bdf8f8",
+      "260706/ratcgf/visualize.py": "be8ebac49ff599decdd48e9e6838a0af3df5a82f83ba9c22fdce97418f9d9ace",
+      "260706/ratcgf/viz_causal_style.py": "34c603450f84c6e200ca7ca38437d1472a356f1e3fc386ba368d8ad281807d2f",
+      "260706/ratcgf/viz_inputs.py": "1103f5e538091cb77140fa16594af2a8198f91e36d2644639e4a40362311801a",
+      "260706/ratcgf/__init__.py": "a1229203ab1d4a7e2f2d1b94d49e1d01267abadf7223e33fa48215fcc138df48",
+      "260706/ratcgf/modules/module1_residual.py": "90190da2e6c398ac94598f296da7d3c09ef21a2658495d79780d72b124d3aace",
+      "260706/ratcgf/modules/module2_encoder.py": "42c9c7fc6e94b6ea2338920292923830368b21e409bb1cbf6ab420b8e777aa7c",
+      "260706/ratcgf/modules/module3_gating.py": "dbdacdd7992051f61760516fb1c195c3f18782ece898a837c04ce72e9b05eebc",
+      "260706/ratcgf/modules/module4_deploy.py": "216f5acb9f6b0da31891445c776a25a91af9b6f8787eee0879e1bb90c127aab2",
+      "260706/ratcgf/modules/__init__.py": "9552f854fcf77389160a08cfb4be2eb902cd9a0c0af76ab57df02cbf9125d369",
+      "260706/ratcgf/utils/data_loading.py": "d8af4fdfe424c6f98b863c14340363953973fc4459ff3d71e1b8c98d88dadd24",
+      "260706/ratcgf/utils/io_utils.py": "55da11272f4a651bd22c8cd5d92754aa839ba8746604538d87b4216eff948199",
+      "260706/ratcgf/utils/preprocess.py": "09b09a7c1976350069c506a3cf9d37184a865589a60de9771303fbfff291b080",
+      "260706/ratcgf/utils/__init__.py": "9552f854fcf77389160a08cfb4be2eb902cd9a0c0af76ab57df02cbf9125d369",
+      "260706_2/autograd.py": "f5dc339eb94542b620b7eec0d14a363a25355924bf4d3cd6649891e1f0576d88",
+      "260706_2/config.py": "5c6857131d371e7f1cc5bdb74a3ba673a6a98ec118585b5832f0bd140c35b89e",
+      "260706_2/dataset.py": "447d905e34712543090ba1bfb7a00ca349e4917ddc44e5a95bfebf62a66b5d2d",
+      "260706_2/data_io.py": "928d9a1a5bf9b36c16e7642bb8368998a4e7bae9e1d4a1fffb322ce7b93d23fd",
+      "260706_2/deploy.py": "9d7a813e7b47ec37c6c060c27df77117dae266330cf71c475a833953e674063a",
+      "260706_2/diag_data.py": "2d305fa9d122946b994286da7c46294235c6f5dc6e41583f7d21867bcf908a77",
+      "260706_2/main.py": "d1b94890d050f125be5110ae4a16852c4feae2e98c1618328f7df5149cd34707",
+      "260706_2/model.py": "004797b2be07506452e4b719edef7b62031134acf0a5023418f00abeccf555bc",
+      "260706_2/nn.py": "feab38d024cb3f8336b0a3ed5de96a4cfd6d6e34d48e6cecfdc60234c9c8e1fd",
+      "260706_2/train.py": "b31852baac2fd76ab66b2a1af09b3d227291a2954ccf24cf0bab66f8c9e83f02",
+      "260706_2/views.py": "6a5b12302f4c9585fd21be947a6f112ce62d7b36e8c825c163ec4eae27d175bd",
+      "260706_2/visualize.py": "7b382f7d7db4d2203b739197e0dc2b18952cd0e844683b079cbe2dbcccc0d69e",
+      "260706_2/viz_causal_style.py": "a754c116c99e3f623aeaebe5bb2485a48996949f1307a655f89214fb9b9300f1",
+      "260706_2/viz_inputs.py": "9f75814b82b27434249930f18e152ce73da017693408443efdbee940b834c57d",
+      "260706_2/__init__.py": "a1229203ab1d4a7e2f2d1b94d49e1d01267abadf7223e33fa48215fcc138df48",
+      "260706_2/modules/module1_residual.py": "90190da2e6c398ac94598f296da7d3c09ef21a2658495d79780d72b124d3aace",
+      "260706_2/modules/module2_encoder.py": "42c9c7fc6e94b6ea2338920292923830368b21e409bb1cbf6ab420b8e777aa7c",
+      "260706_2/modules/module3_gating.py": "dbdacdd7992051f61760516fb1c195c3f18782ece898a837c04ce72e9b05eebc",
+      "260706_2/modules/module4_deploy.py": "5b4e46e76bf63d830686fa21e0ef3bd3421ec45611a6d996220604c5b3acaa28",
+      "260706_2/modules/__init__.py": "9552f854fcf77389160a08cfb4be2eb902cd9a0c0af76ab57df02cbf9125d369",
+      "260706_2/utils/data_loading.py": "d8af4fdfe424c6f98b863c14340363953973fc4459ff3d71e1b8c98d88dadd24",
+      "260706_2/utils/io_utils.py": "55da11272f4a651bd22c8cd5d92754aa839ba8746604538d87b4216eff948199",
+      "260706_2/utils/preprocess.py": "09b09a7c1976350069c506a3cf9d37184a865589a60de9771303fbfff291b080",
+      "260706_2/utils/__init__.py": "9552f854fcf77389160a08cfb4be2eb902cd9a0c0af76ab57df02cbf9125d369",
+      "260731/config.py": "16b991e7c1d41fec21d8be65881c3a47aaff00ecc58d84e8fcb02186d709f6a4",
+      "260731/dataset.py": "42d68f98946556b23e2032149be25265726d8a55fae3040d2c7cc5fbca3fac08",
+      "260731/main.py": "158f91facea6c73284d3ab3ce7a4b59d02854663ec80f2d3a3630b23e905d0d3",
+      "260731/model.py": "004797b2be07506452e4b719edef7b62031134acf0a5023418f00abeccf555bc",
+      "260731/train.py": "b31852baac2fd76ab66b2a1af09b3d227291a2954ccf24cf0bab66f8c9e83f02",
+      "260731/visualize.py": "b517fe15b9eff40685cca6616b98d7d3a68e4cb218fa64f8ba78c029a314bd60",
+      "260731/viz_causal_style.py": "a754c116c99e3f623aeaebe5bb2485a48996949f1307a655f89214fb9b9300f1",
+      "260731/viz_inputs.py": "b3da24fb474b6061a3ea79fea145f931fd099150280212a3227c42445a4ff94e",
+      "260731/__init__.py": "3395ee3fcdc6c92d163494499bd23239cbe01f36b8cce77a9601c3e55901f9ba",
+      "260731/modules/module1_residual.py": "90190da2e6c398ac94598f296da7d3c09ef21a2658495d79780d72b124d3aace",
+      "260731/modules/module2_encoder.py": "42c9c7fc6e94b6ea2338920292923830368b21e409bb1cbf6ab420b8e777aa7c",
+      "260731/modules/module3_gating.py": "dbdacdd7992051f61760516fb1c195c3f18782ece898a837c04ce72e9b05eebc",
+      "260731/modules/module4_deploy.py": "9d5b38b51ce837b20e6200e02f3f2becbd132ccb4d0d7e60771287025e6ef5cd",
+      "260731/modules/__init__.py": "385170318834ebf9c9a6a275395a97062ea04dda795d7aabb231446f1f4d53ac",
+      "260731/tests/test_time_alignment.py": "48b354df70986a9a0cc6546dbfbab1bf4b6d813e694dc0b1916ce73b3206a0c7",
+      "260731/utils/data_loading.py": "57b6d7a6714d19d70ed7c92c2808d9ed50fcfb2896330eabb9f8c7b39ba56efa",
+      "260731/utils/io_utils.py": "f3be9ac78d52306be514e99b57e6bdd8f9e094125788feabc7437ba1a8ce7b71",
+      "260731/utils/preprocess.py": "06ee52f15c66728df3971970760deb2f7730f34fe0905c1fba6ef9364ac219e4",
+      "260731/utils/__init__.py": "f2517746612e993e86e78916d719208efd59f27236a6d014ee7d421e2d240b64"
+    },
+    "fusion_gradients": {
+      "prediction_loss": {
+        "encoder": {
+          "with_grad": 77,
+          "l1": 3.3329893759498646
+        },
+        "global_gate": {
+          "with_grad": 4,
+          "l1": 0.33853596448898315
+        },
+        "node_gate": {
+          "with_grad": 0,
+          "l1": 0
+        },
+        "edge_gate": {
+          "with_grad": 0,
+          "l1": 0
+        },
+        "score_head": {
+          "with_grad": 0,
+          "l1": 0
+        },
+        "predictor": {
+          "with_grad": 4,
+          "l1": 3.6670350432395935
+        }
+      },
+      "total_loss": {
+        "encoder": {
+          "with_grad": 77,
+          "l1": 3.3330979285433955
+        },
+        "global_gate": {
+          "with_grad": 4,
+          "l1": 0.339141221717
+        },
+        "node_gate": {
+          "with_grad": 4,
+          "l1": 1.8351752714806935e-05
+        },
+        "edge_gate": {
+          "with_grad": 4,
+          "l1": 0.001175079625681974
+        },
+        "score_head": {
+          "with_grad": 0,
+          "l1": 0
+        },
+        "predictor": {
+          "with_grad": 4,
+          "l1": 3.6670350432395935
+        }
+      }
+    },
+    "next_intent_dependency": {
+      "max_prediction_change": 0.00023843348026275635,
+      "max_fused_edge_change": 0.0007687229663133621,
+      "interpretation": "Design explicitly uses t+r. Online availability depends on intent timestamp semantics and upstream training cutoffs."
+    },
+    "deployment_utility_weights": {
+      "unchanged_selection": true,
+      "interpretation": "Greedy function never reads lambda_el/lambda_tr/lambda_c; utilities are reported after selection."
+    },
+    "elastic_utility_proxy": {
+      "chain": 0.75,
+      "cycle": 0.75,
+      "interpretation": "Score retention, not prediction loss under failures."
+    },
+    "actual_upstream_export_keys": [
+      "split_id",
+      "input_start_t",
+      "input_end_t",
+      "target_start_t",
+      "target_end_t",
+      "intent_time_t",
+      "input_start_time",
+      "input_end_time",
+      "target_start_time",
+      "target_end_time",
+      "intent_time",
+      "edges_list",
+      "strength_list",
+      "delta_list",
+      "density",
+      "hotspot_count",
+      "candidate_edges",
+      "coords",
+      "intent_quantile_q"
+    ],
+    "current_local_input_inventory": {
+      "flow_shape": [
+        5088,
+        100
+      ],
+      "coords_rows": 100,
+      "flow_missing_values": 0,
+      "flow_nonfinite_values": 0,
+      "graph_inputs": [],
+      "interpretation": "Missing-value leakage is a reproducible conditional defect; clean current CSV does not trigger it."
+    }
+  }
+}

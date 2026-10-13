@@ -51,3 +51,31 @@ def extract_hotspots(graph: dict, min_size: int = 2):
                          "strength": strength})
     hotspots.sort(key=lambda h: h["strength"], reverse=True)
     return hotspots
+
+
+def select_edges_fixed_budget(s_vec, cand, fraction=0.10, mode="top", rng=None):
+    """Select a fixed fraction of candidate edges for one window."""
+    s = np.asarray(s_vec, dtype=float).reshape(-1)
+    E = s.size
+    k = max(1, min(E, int(np.ceil(float(fraction) * E))))
+    if mode == "top":
+        idx = np.argsort(s)[-k:]
+    elif mode == "low":
+        idx = np.argsort(s)[:k]
+    elif mode == "random":
+        rng = np.random.default_rng(0) if rng is None else rng
+        idx = rng.choice(E, size=k, replace=False)
+    else:
+        raise ValueError(f"unknown edge selection mode: {mode}")
+    idx = np.sort(idx)
+    return {"edges": cand["edges"][idx], "strength": s[idx],
+            "indices": idx,
+            "delta": float(np.min(s[idx])) if idx.size else float("nan")}
+
+
+def build_intent_graph_threshold(s_vec, cand, threshold):
+    """Build a graph using an absolute threshold fixed on validation data."""
+    s = np.asarray(s_vec, dtype=float).reshape(-1)
+    idx = np.flatnonzero(s >= float(threshold))
+    return {"edges": cand["edges"][idx], "strength": s[idx],
+            "indices": idx, "delta": float(threshold)}
