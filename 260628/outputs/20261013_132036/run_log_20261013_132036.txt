@@ -1,0 +1,27 @@
+[run] timestamp = 20261013_132036
+[run] output directory = outputs\20261013_132036
+[data] N=100 sensors, T=8640, step=5 min (30.0 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=1724 val=576 test=576 (split by prediction target time)
+[windows] target-time cuts: train < 5184, val < 6912, test >= 6912
+[feat] building window features (train/val/test)...
+[feat] Train windows finished in 89.30s | Mem: 242.2MB -> 331.0MB
+[feat] Val windows finished in 29.06s | Mem: 331.0MB -> 361.6MB
+[feat] Test windows finished in 30.34s | Mem: 361.6MB -> 392.2MB
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=12922
+[train] starting...
+[train] Epoch 1/2 | L_pred=0.5424 | L_total=0.5428 | val_MAE=0.1339 | Time: 72.39s | Mem: 4529.1MB
+[train] Epoch 2/2 | L_pred=0.0175 | L_total=0.0175 | val_MAE=0.1203 | Time: 81.06s | Mem: 5656.7MB
+[test] DEIG-TCN MAE=0.1254  persistence MAE=0.0898 | Time: 17.69s | Mem: 2415.9MB
+[ablation] {'full': 0.12535308300023698, 'mask_top': 0.1252996753810409, 'mask_low': 0.12535308300023698, 'mask_random': 0.12534493552130926, 'random_std': 0.04253435824059145, 'seeds': 5, 'selection_fraction': 0.1}
+[intent] inferring all valid windows: M=2876, E=488, batch=64...
+  [intent] 64/2876
+  [intent] 640/2876
+  [intent] 1280/2876
+  [intent] 1920/2876
+  [intent] 2560/2876
+  [intent] 2876/2876
+[intent] Inference finished | Time: 29.02s | Mem: 6529.0MB
+[intent] validation absolute threshold=1.129867e-42 (chosen from validation 90th percentile; test is not used)
+[viz] 576 consecutive test windows: target 2025-01-25 00:00:00 -> 2025-01-30 23:45:00
+[viz] writing figures...

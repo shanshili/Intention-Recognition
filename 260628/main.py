@@ -35,6 +35,11 @@ from deig.intent_graph import (build_intent_graph, build_intent_graph_threshold,
                                select_edges_fixed_budget)
 from deig import viz
 import pandas as pd
+import time
+import platform
+import psutil
+from tqdm import tqdm
+
 
 class Logger:
     """将stdout重定向，同时输出到控制台和文件"""
@@ -96,13 +101,29 @@ def make_windows(T, W, H, train_frac=0.6, val_frac=0.2, stride=4,
             train_cut, val_cut)
 
 
-def build_inputs_for(pre, cand, t_list, W, H):
+# def build_inputs_for(pre, cand, t_list, W, H):
+#     Z = pre["Z"]
+#     inputs, targets = [], []
+#     for t in t_list:
+#         wi = build_window_inputs(pre, cand, t, W)
+#         inputs.append(wi)
+#         targets.append(Z[:, t + 1:t + 1 + H])
+#     return inputs, targets
+def build_inputs_for(pre, cand, t_list, W, H, desc="Building features"):
     Z = pre["Z"]
     inputs, targets = [], []
-    for t in t_list:
+    phase_start = time.time()
+    process = psutil.Process()
+    mem_before = process.memory_info().rss / (1024 ** 2)
+
+    for t in tqdm(t_list, desc=desc):
         wi = build_window_inputs(pre, cand, t, W)
         inputs.append(wi)
         targets.append(Z[:, t + 1:t + 1 + H])
+
+    phase_time = time.time() - phase_start
+    mem_after = process.memory_info().rss / (1024 ** 2)
+    print(f"[feat] {desc} finished in {phase_time:.2f}s | Mem: {mem_before:.1f}MB -> {mem_after:.1f}MB")
     return inputs, targets
 
 
@@ -114,7 +135,7 @@ def mae(pred, target):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="outputs")
-    ap.add_argument("--epochs", type=int, default=2)
+    ap.add_argument("--epochs", type=int, default=20)
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ap.add_argument("--flow-csv", default=os.path.join(root, "pems_spatial_kmeans_topK", "id_Env_A_timeseries_5m.csv"))
     ap.add_argument("--coord-csv", default=os.path.join(root, "pems_spatial_kmeans_topK", "id_node_positions.csv"))
@@ -124,20 +145,34 @@ def main():
     ap.add_argument("--stride", type=int, default=3)
     ap.add_argument("--edge-seeds", type=int, default=5,
                     help="random seeds for per-window edge ablation")
-    ap.add_argument("--viz-weeks", type=int, default=2,
+    ap.add_argument("--viz-weeks", type=int, default=1,
                     help="continuous test visualization/statistics span")
     ap.add_argument("--max-steps", type=int, default=None, help="prefix-only smoke run; not a full-data experiment")
     ap.add_argument("--quick", action="store_true",
                     help="smaller/faster run for testing")
     ap.add_argument("--data-start", default="2025-01-01 00:00:00",
                     help="原始索引0对应的真实时间")
-    ap.add_argument("--viz-count", type=int, default=97,
+    ap.add_argument("--viz-count", type=int, default=10,
                     help="连续可视化的测试窗口数量")
     ap.add_argument("--viz-start-test", type=int, default=0,
                     help="从测试集第几个窗口开始连续可视化")
     ap.add_argument("--intent-batch-size", type=int, default=64,
                     help="全部窗口意图得分推理批大小")
     args = ap.parse_args()
+    # ===== 记录开始时间与系统环境信息 =====
+    start_time = time.time()
+
+    sys_info = {
+        "OS": platform.platform(),
+        "Python": platform.python_version(),
+        "CPU": f"{platform.processor()} (Cores: {psutil.cpu_count(logical=False)} Physical, {psutil.cpu_count(logical=True)} Logical)",
+        "RAM_Total_GB": round(psutil.virtual_memory().total / (1024 ** 3), 2),
+    }
+    # 打印到控制台
+    print("[sys] Running Environment:")
+    for k, v in sys_info.items():
+        print(f"  {k}: {v}")
+    # ==========================================
 
     os.makedirs(args.out, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -177,6 +212,8 @@ def main():
     # 真实数据集下，窗口和训练轮次需根据数据规模重新设定
     W, H, stride, epochs = args.window, args.horizon, args.stride, args.epochs
     N, T = data.X.shape
+
+
     start_datetime = pd.Timestamp(args.data_start)
 
     print(f"[data] N={N} sensors, T={T}, step={args.step_minutes} min "
@@ -209,9 +246,13 @@ def main():
           f"val < {val_cut}, test >= {val_cut}")
 
     print("[feat] building window features (train/val/test)...")
-    tr_in, tr_y = build_inputs_for(pre, cand, tr_t, W, H) # 训练数据
-    va_in, va_y = build_inputs_for(pre, cand, va_t, W, H)
-    te_in, te_y = build_inputs_for(pre, cand, te_t, W, H)
+    # tr_in, tr_y = build_inputs_for(pre, cand, tr_t, W, H) # 训练数据
+    # va_in, va_y = build_inputs_for(pre, cand, va_t, W, H)
+    # te_in, te_y = build_inputs_for(pre, cand, te_t, W, H)
+    tr_in, tr_y = build_inputs_for(pre, cand, tr_t, W, H, desc="Train windows")
+    va_in, va_y = build_inputs_for(pre, cand, va_t, W, H, desc="Val windows")
+    te_in, te_y = build_inputs_for(pre, cand, te_t, W, H, desc="Test windows")
+
 
     F0 = tr_in[0]["F_seq"].shape[-1]   # 每步原始节点特征维度 (=7)
     Fedge = tr_in[0]["edge_block"].shape[1] # 边特征维度
@@ -228,46 +269,136 @@ def main():
     # mini-batch the training windows by concatenation
     rng = np.random.default_rng(0) # 随机数生成器
     idx_all = np.arange(len(tr_in))
-    bs = 16
+    bs = 8
     history = {"pred": [], "total": []}
+
+    # print("[train] starting...")
+    # for ep in range(epochs):
+    #     rng.shuffle(idx_all) # 打乱训练数据顺序
+    #     ep_pred, ep_total, nb = 0.0, 0.0, 0
+    #     for b0 in range(0, len(idx_all), bs):
+    #         bidx = idx_all[b0:b0 + bs]
+    #         batch = assemble_batch([tr_in[i] for i in bidx], # 组装batch
+    #                                [tr_y[i] for i in bidx], cand, rev)
+    #         opt.zero_grad()
+    #         total, logs, s, pred = model.forward_loss(batch, lambdas)
+    #         total.backward()
+    #         opt.step()
+    #         ep_pred += float(logs["pred"]); ep_total += float(logs["total"])
+    #         nb += 1
+    #     history["pred"].append(ep_pred / nb)
+    #     history["total"].append(ep_total / nb)
+    #     if ep % max(1, epochs // 8) == 0 or ep == epochs - 1:
+    #         # quick val MAE
+    #         vb = assemble_batch(va_in, va_y, cand, rev)
+    #         vpred = model.infer_pred(vb)
+    #         print(f"  epoch {ep:3d}  L_pred={history['pred'][-1]:.4f}  "
+    #               f"L_total={history['total'][-1]:.4f}  "
+    #               f"val_MAE={mae(vpred, vb['target']):.4f}")
+
+    # 早停相关变量
+    best_val_mae = float('inf')
+    patience = 5  # 允许连续5个epoch不改善
+    no_improve = 0
+    best_epoch = 0
+    best_model_params = None
 
     print("[train] starting...")
     for ep in range(epochs):
-        rng.shuffle(idx_all) # 打乱训练数据顺序
+        ep_start_time = time.time()
+        rng.shuffle(idx_all)  # 打乱训练数据顺序
         ep_pred, ep_total, nb = 0.0, 0.0, 0
         for b0 in range(0, len(idx_all), bs):
             bidx = idx_all[b0:b0 + bs]
-            batch = assemble_batch([tr_in[i] for i in bidx], # 组装batch
+            batch = assemble_batch([tr_in[i] for i in bidx],  # 组装batch
                                    [tr_y[i] for i in bidx], cand, rev)
             opt.zero_grad()
             total, logs, s, pred = model.forward_loss(batch, lambdas)
             total.backward()
             opt.step()
-            ep_pred += float(logs["pred"]); ep_total += float(logs["total"])
+            ep_pred += float(logs["pred"]);
+            ep_total += float(logs["total"])
             nb += 1
         history["pred"].append(ep_pred / nb)
         history["total"].append(ep_total / nb)
-        if ep % max(1, epochs // 8) == 0 or ep == epochs - 1:
-            # quick val MAE
-            vb = assemble_batch(va_in, va_y, cand, rev)
-            vpred = model.infer_pred(vb)
-            print(f"  epoch {ep:3d}  L_pred={history['pred'][-1]:.4f}  "
-                  f"L_total={history['total'][-1]:.4f}  "
-                  f"val_MAE={mae(vpred, vb['target']):.4f}")
+
+        ep_time_cost = time.time() - ep_start_time
+        ep_mem_mb = psutil.Process().memory_info().rss / (1024 ** 2)
+        vb = assemble_batch(va_in, va_y, cand, rev)
+        vpred = model.infer_pred(vb)
+        val_mae = mae(vpred, vb['target'])
+
+        # 保存最佳模型
+        if val_mae < best_val_mae:
+            best_val_mae = val_mae
+            best_epoch = ep + 1
+            best_model_params = {f"param_{i}": p.data for i, p in enumerate(model.params())}
+        else:
+            no_improve += 1
+
+        # 早停判断
+        if no_improve >= patience:
+            print(f"[train] Early stopping at epoch {ep + 1}, best epoch: {best_epoch}")
+            break
+
+        print(f"[train] Epoch {ep + 1}/{epochs} | L_pred={history['pred'][-1]:.4f} | "
+              f"L_total={history['total'][-1]:.4f} | val_MAE={val_mae:.4f} | "
+              f"Time: {ep_time_cost:.2f}s | Mem: {ep_mem_mb:.1f}MB")
 
     # ---------------- test prediction ----------------
-    tb = assemble_batch(te_in, te_y, cand, rev) # 组装测试batch
-    tpred = model.infer_pred(tb)
-    test_mae = mae(tpred, tb["target"])
+    # tb = assemble_batch(te_in, te_y, cand, rev) # 组装测试batch
+    # tpred = model.infer_pred(tb)
+    # test_mae = mae(tpred, tb["target"])
+    # persist = np.repeat(tb["z_last"].reshape(-1, 1), H, axis=1)
+    # test_mae_persist = mae(persist, tb["target"])
+    # print(f"[test] DEIG-TCN MAE={test_mae:.4f}  "
+    #       f"persistence MAE={test_mae_persist:.4f}")
+    # ---------------- test prediction ----------------
+    # test_phase_start = time.time()
+    # tb = assemble_batch(te_in, te_y, cand, rev) # 组装测试batch
+    # tpred = model.infer_pred(tb)
+    # test_mae = mae(tpred, tb["target"])
+    # persist = np.repeat(tb["z_last"].reshape(-1, 1), H, axis=1)
+    # test_mae_persist = mae(persist, tb["target"])
+    # test_phase_time = time.time() - test_phase_start
+    # test_mem_mb = psutil.Process().memory_info().rss / (1024 ** 2)
+    # print(f"[test] DEIG-TCN MAE={test_mae:.4f}  "
+    #       f"persistence MAE={test_mae_persist:.4f} | "
+    #       f"Time: {test_phase_time:.2f}s | Mem: {test_mem_mb:.1f}MB")
+    # ---------------- test prediction ----------------
+    # ---------------- test prediction ----------------
+
+    # 恢复最佳模型
+    if best_model_params is not None:
+        for i, p in enumerate(model.params()):
+            p.data = best_model_params[f"param_{i}"]
+
+    test_phase_start = time.time()
+    test_mae = 0.0
+    test_batches = len(te_in) // bs
+    s_test = []  # 用于存储所有batch的意图图
+    for i in range(test_batches):
+        start_idx = i * bs
+        end_idx = min((i + 1) * bs, len(te_in))
+        tb = assemble_batch(te_in[start_idx:end_idx], te_y[start_idx:end_idx], cand, rev)
+        tpred = model.infer_pred(tb)
+        test_mae += mae(tpred, tb["target"])
+        s_batch = np.asarray(model.infer_scores(tb)).reshape(bs, -1)
+        s_test.append(s_batch)
+    test_mae /= test_batches
+    s_test = np.concatenate(s_test, axis=0)  # 合并所有batch的结果
     persist = np.repeat(tb["z_last"].reshape(-1, 1), H, axis=1)
     test_mae_persist = mae(persist, tb["target"])
+    test_phase_time = time.time() - test_phase_start
+    test_mem_mb = psutil.Process().memory_info().rss / (1024 ** 2)
     print(f"[test] DEIG-TCN MAE={test_mae:.4f}  "
-          f"persistence MAE={test_mae_persist:.4f}")
+          f"persistence MAE={test_mae_persist:.4f} | "
+          f"Time: {test_phase_time:.2f}s | Mem: {test_mem_mb:.1f}MB")
 
     # ---------------- edge-mask ablation ----------------
     # Evaluate each window independently; pooled ranking would confound time
     # windows and make the ablation dependent on test-set length.
-    s_test = np.asarray(model.infer_scores(tb)).reshape(len(te_t), -1)
+    # s_test = np.asarray(model.infer_scores(tb)).reshape(len(te_t), -1)
     abl_values = {"full": [], "mask_top": [], "mask_low": [], "mask_random": []}
     for seed in range(max(1, args.edge_seeds)):
         arng = np.random.default_rng(seed)
@@ -307,6 +438,7 @@ def main():
 
     print(f"[intent] inferring all valid windows: M={M_all}, E={E}, "
           f"batch={infer_bs}...")
+    intent_phase_start = time.time()
     for b0 in range(0, M_all, infer_bs):
         b1 = min(b0 + infer_bs, M_all)
         batch = assemble_batch(all_in[b0:b1], all_y[b0:b1], cand, rev)
@@ -322,6 +454,9 @@ def main():
             print(f"  [intent] {b1}/{M_all}")
 
     all_scores = np.concatenate(score_chunks, axis=0)  # (M_all, E)
+    intent_phase_time = time.time() - intent_phase_start
+    intent_mem_mb = psutil.Process().memory_info().rss / (1024 ** 2)
+    print(f"[intent] Inference finished | Time: {intent_phase_time:.2f}s | Mem: {intent_mem_mb:.1f}MB")
 
     val_scores = all_scores[len(tr_t):len(tr_t) + len(va_t)]
     abs_threshold = float(np.quantile(val_scores.reshape(-1), 0.90))
@@ -367,10 +502,12 @@ def main():
 
     # ---------------- 97 consecutive test windows for visualization ----------------
     viz_start_in_test = max(0, int(args.viz_start_test))
-    requested_viz_count = max(
-        int(args.viz_count),
-        int(round(args.viz_weeks * 7 * 24 * 60 / args.step_minutes / stride)),
-    )
+    # requested_viz_count = max(
+    #     int(args.viz_count),
+    #     int(round(args.viz_weeks * 7 * 24 * 60 / args.step_minutes / stride)),
+    # )
+    requested_viz_count = int(args.viz_count)
+
     if viz_start_in_test >= len(te_t):
         raise ValueError(
             f"--viz-start-test={viz_start_in_test}超出测试窗口范围"
@@ -610,6 +747,23 @@ def main():
     print(f"[save] Data specification saved to {spec_path}")
 
     print("[done] outputs in", out_dir)
+
+    # ===== 新增：程序结束时统计总耗时与系统资源消耗 =====
+    end_time = time.time()
+    total_time_sec = end_time - start_time
+    total_time_str = f"{int(total_time_sec // 3600)}h {int((total_time_sec % 3600) // 60)}m {int(total_time_sec % 60)}s"
+
+    sys_mem = psutil.virtual_memory()
+    sys_mem_used_gb = round(sys_mem.used / (1024 ** 3), 2)
+
+    summary_log = (
+        f"\n[summary] ========== Run Finished ==========\n"
+        f"[summary] Total Running Time: {total_time_str} ({total_time_sec:.2f} sec)\n"
+        f"[summary] System Memory Used/Total: {sys_mem_used_gb} GB / {sys_info['RAM_Total_GB']} GB ({sys_mem.percent}%)\n"
+        f"[summary] ===================================="
+    )
+    print(summary_log)
+    # ==========================================
 
     # 恢复 sys.stdout 以防后续其他操作受影响
     sys.stdout.log.close()

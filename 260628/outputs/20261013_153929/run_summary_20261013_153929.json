@@ -1,0 +1,79 @@
+{
+  "timestamp": "20261013_153929",
+  "data_start": "2025-01-01 00:00:00",
+  "flow_csv": "C:\\Work-lcr\\Tjnu-p\\Mp\\Intention-Recognition\\pems_spatial_kmeans_topK\\id_Env_A_timeseries_5m.csv",
+  "step_minutes": 5,
+  "max_steps": 8640,
+  "run_scope": "prefix_smoke",
+  "N": 100,
+  "T": 8640,
+  "W": 12,
+  "H": 1,
+  "stride": 3,
+  "candidate_edges": 488,
+  "split_rule": "entire prediction target interval",
+  "train_target_cut_index": 5184,
+  "val_target_cut_index": 6912,
+  "train_windows": 1724,
+  "val_windows": 576,
+  "test_windows": 576,
+  "test_MAE": 0.11180821198024139,
+  "persistence_MAE": 0.089772437327521,
+  "edge_mask_ablation": {
+    "full": 0.11180821198024136,
+    "mask_top": 0.11177299574059395,
+    "mask_low": 0.11180821198024136,
+    "mask_random": 0.11180812483573038,
+    "random_std": 0.03258588650248084,
+    "seeds": 5,
+    "selection_fraction": 0.1
+  },
+  "intent_windows_saved": 2876,
+  "intent_time_definition": "prediction target start time",
+  "intent_quantile_q": 0.9,
+  "validation_absolute_threshold": 0.0,
+  "absolute_threshold_rule": "90th percentile of validation-window edge scores",
+  "missing_intervals_excluded": [
+    [
+      "2025-02-01 05:45:00",
+      "2025-02-01 23:55:00"
+    ],
+    [
+      "2025-03-09 02:00:00",
+      "2025-03-09 02:55:00"
+    ]
+  ],
+  "edge_ablation_selection": "per-window top/low/random 10%",
+  "edge_ablation_seeds": 5,
+  "visualization_split": "test",
+  "visualization_contiguous": true,
+  "visualization_count": 10,
+  "visualization_span_weeks": 1,
+  "visualization_start_test_index": 0,
+  "visualization_target_start": "2025-01-25 00:00",
+  "visualization_target_end": "2025-01-25 02:15",
+  "visualization_density": [
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929,
+    0.04929292929292929
+  ],
+  "visualization_hotspot_count": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ]
+}

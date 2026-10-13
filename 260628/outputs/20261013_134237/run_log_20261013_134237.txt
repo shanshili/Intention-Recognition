@@ -1,0 +1,43 @@
+[run] timestamp = 20261013_134237
+[run] output directory = outputs\20261013_134237
+[data] N=100 sensors, T=8640, step=5 min (30.0 days), 0 corridors
+[graph] candidate edges |E0|=488
+[windows] train=1724 val=576 test=576 (split by prediction target time)
+[windows] target-time cuts: train < 5184, val < 6912, test >= 6912
+[feat] building window features (train/val/test)...
+[feat] Train windows finished in 92.75s | Mem: 241.0MB -> 331.1MB
+[feat] Val windows finished in 27.51s | Mem: 331.1MB -> 361.6MB
+[feat] Test windows finished in 30.03s | Mem: 361.6MB -> 392.1MB
+[model] GAT-TCN encoder: F0=7 -> Fz=24, Fedge=14, #params=12922
+[train] starting...
+[train] Epoch 1/100 | L_pred=0.5424 | L_total=0.5428 | val_MAE=0.1339 | Time: 72.52s | Mem: 4524.7MB
+[train] Epoch 2/100 | L_pred=0.0175 | L_total=0.0175 | val_MAE=0.1203 | Time: 79.10s | Mem: 5654.8MB
+[train] Epoch 3/100 | L_pred=0.0141 | L_total=0.0141 | val_MAE=0.1245 | Time: 88.70s | Mem: 6373.9MB
+[train] Epoch 4/100 | L_pred=0.0129 | L_total=0.0129 | val_MAE=0.0894 | Time: 100.89s | Mem: 1294.1MB
+[train] Epoch 5/100 | L_pred=0.0136 | L_total=0.0136 | val_MAE=0.0955 | Time: 119.21s | Mem: 2085.0MB
+[train] Epoch 6/100 | L_pred=0.0123 | L_total=0.0123 | val_MAE=0.0837 | Time: 143.28s | Mem: 2865.3MB
+[train] Epoch 7/100 | L_pred=0.0118 | L_total=0.0118 | val_MAE=0.0827 | Time: 176.62s | Mem: 3708.5MB
+[train] Epoch 8/100 | L_pred=0.0115 | L_total=0.0115 | val_MAE=0.0988 | Time: 204.48s | Mem: 4518.2MB
+[train] Epoch 9/100 | L_pred=0.0119 | L_total=0.0119 | val_MAE=0.0777 | Time: 217.02s | Mem: 5620.9MB
+[train] Epoch 10/100 | L_pred=0.0115 | L_total=0.0115 | val_MAE=0.0780 | Time: 223.02s | Mem: 6425.0MB
+[train] Epoch 11/100 | L_pred=0.0117 | L_total=0.0117 | val_MAE=0.1042 | Time: 229.96s | Mem: 1348.9MB
+[train] Epoch 12/100 | L_pred=0.0114 | L_total=0.0114 | val_MAE=0.0787 | Time: 227.71s | Mem: 2154.3MB
+[train] Epoch 13/100 | L_pred=0.0113 | L_total=0.0113 | val_MAE=0.0750 | Time: 230.38s | Mem: 2922.9MB
+[train] Epoch 14/100 | L_pred=0.0114 | L_total=0.0114 | val_MAE=0.0747 | Time: 231.87s | Mem: 3743.5MB
+[train] Epoch 15/100 | L_pred=0.0110 | L_total=0.0110 | val_MAE=0.0769 | Time: 235.06s | Mem: 4544.9MB
+[train] Epoch 16/100 | L_pred=0.0111 | L_total=0.0111 | val_MAE=0.0760 | Time: 234.52s | Mem: 5629.1MB
+[train] Epoch 17/100 | L_pred=0.0113 | L_total=0.0113 | val_MAE=0.0865 | Time: 235.72s | Mem: 6449.8MB
+[train] Epoch 18/100 | L_pred=0.0111 | L_total=0.0111 | val_MAE=0.0754 | Time: 241.69s | Mem: 1371.2MB
+[train] Epoch 19/100 | L_pred=0.0111 | L_total=0.0111 | val_MAE=0.0761 | Time: 235.68s | Mem: 2173.6MB
+[train] Epoch 20/100 | L_pred=0.0109 | L_total=0.0109 | val_MAE=0.0747 | Time: 235.65s | Mem: 2927.4MB
+[train] Epoch 21/100 | L_pred=0.0111 | L_total=0.0111 | val_MAE=0.0775 | Time: 237.19s | Mem: 3746.7MB
+[train] Epoch 22/100 | L_pred=0.0109 | L_total=0.0109 | val_MAE=0.0734 | Time: 244.97s | Mem: 4543.1MB
+[train] Epoch 23/100 | L_pred=0.0108 | L_total=0.0108 | val_MAE=0.0728 | Time: 242.63s | Mem: 5658.9MB
+[train] Epoch 24/100 | L_pred=0.0107 | L_total=0.0107 | val_MAE=0.0851 | Time: 244.82s | Mem: 6435.3MB
+[train] Epoch 25/100 | L_pred=0.0108 | L_total=0.0108 | val_MAE=0.0784 | Time: 248.18s | Mem: 1319.1MB
+[train] Epoch 26/100 | L_pred=0.0104 | L_total=0.0104 | val_MAE=0.0727 | Time: 240.45s | Mem: 2133.9MB
+[train] Epoch 27/100 | L_pred=0.0102 | L_total=0.0102 | val_MAE=0.0774 | Time: 238.07s | Mem: 2867.0MB
+[train] Epoch 28/100 | L_pred=0.0104 | L_total=0.0104 | val_MAE=0.0744 | Time: 254.01s | Mem: 3714.9MB
+[train] Epoch 29/100 | L_pred=0.0099 | L_total=0.0099 | val_MAE=0.0731 | Time: 261.20s | Mem: 4495.1MB
+[train] Epoch 30/100 | L_pred=0.0099 | L_total=0.0099 | val_MAE=0.0722 | Time: 242.40s | Mem: 5622.9MB
+[train] Epoch 31/100 | L_pred=0.0095 | L_total=0.0095 | val_MAE=0.0738 | Time: 246.30s | Mem: 6412.9MB
