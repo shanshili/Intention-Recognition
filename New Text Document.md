@@ -1,3 +1,5 @@
+# 意图图
+
 **DEIG-TCN：Dynamic Edge-level Intent Graph Temporal Convolutional Network**
 即：**预测驱动的动态边级交通意图图构建算法**。
 
@@ -1278,6 +1280,8 @@ $$
 该项鼓励高意图边优先出现在空间上合理的邻近区域。
 
 如果候选图已经由 KNN 限制得很稀疏，这一项可以不用。
+
+# 因果-意图融合
 
 # 以下项目实现的工程代码目前有输入文件：
 

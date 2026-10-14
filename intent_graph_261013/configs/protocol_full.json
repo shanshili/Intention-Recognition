@@ -1,0 +1,21 @@
+{
+  "name": "full_5m",
+  "flow_path": "../pems_spatial_kmeans_topK/id_Env_A_timeseries_5m.csv",
+  "coord_path": "../pems_spatial_kmeans_topK/id_node_positions.csv",
+  "missing_mask_path": null,
+  "start_time": "2025-01-01 00:00:00",
+  "step_minutes": 5,
+  "max_steps": null,
+  "W": 12,
+  "H": 3,
+  "train_stride": 3,
+  "eval_stride": 1,
+  "split_ratios": [0.6, 0.2, 0.2],
+  "features": ["level"],
+  "candidate_graph": {"k": 4, "tau_max": 4},
+  "known_missing_intervals": [],
+  "input_fill": "forward_train_mean",
+  "target_missing_policy": "observed_only",
+  "std_epsilon": 0.000001,
+  "evaluation_version": "intent_graph_v1"
+}

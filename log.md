@@ -2618,11 +2618,10 @@ w=12,h=1
 
 1. “更合理的做法是对每个窗口分别：
 
-   ```
    取该窗口最高 10% 边
    取该窗口最低 10% 边
    取该窗口随机 10% 边
-   ```
+
 
    再逐窗口计算 MAE，最后求平均。” 这个对，之后改成这个
 
@@ -2645,5 +2644,107 @@ w=12,h=1
 
 ## 261013
 
+检查：
 修改后的数据集划分
 设计方案和代码的出入（说是基本一致，可能需要按照代码整理方案）
+
+初步实验结果：结果有问题，没有区分。用30天的数据开展，7个月的数据量太大
+
+计划：代码新建文件夹“intent_graph_261013”，可以复用的代码就复制，各基线、初级方案、指标参数计算也给出详细文档md，文档中不要代码，用数学公式描述
+
+## 261014
+
+1. 指标是否充分：有矛盾点，6个基线不全都是构图的
+   指标的对比核心到底是什么
+2. 图标是否合理、充分
+
+### comparison.csv
+
+| 后缀    | 含义                                   |
+| ------- | -------------------------------------- |
+| `_mean` | 多次独立训练运行的平均值               |
+| `_std`  | 多次独立训练 seed 之间的**样本标准差** |
+| `_n`    | 这个指标实际参与汇总的独立运行数量     |
+
+文档规定神经模型默认使用 3 个训练 seed，并用样本标准差汇总；Persistence 等确定性模型不需要重复相同训练。 
+
+例如：
+
+`test_mae_mean` = 各训练 seed 的测试集 MAE 平均值
+ `test_mae_std` = 这些 seed 的测试集 MAE 样本标准差
+ `test_mae_n` = 有多少个 seed 有有效测试 MAE。
+
+| 列名                                | 含义                                                         |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `model`                             | 模型名称，如 persistence、ridge_ar、local、fixed_graph、static_gate、dynamic_gate |
+| `config_signature`                  | 本次模型/实验配置的唯一签名，用于判断是不是同一配置          |
+| `runs`                              | 汇总了多少次运行                                             |
+| `independent_seeds`                 | 独立训练 seed 数；主要针对神经模型                           |
+| `device`                            | 实际训练计算设备，如 CPU / CUDA                              |
+| `intervention_scope`                | 图干预作用范围的配置标记；当前图模型为 `single_message`      |
+| `deterministic`                     | 是否属于确定性运行                                           |
+| `available_splits`                  | 本次产物实际包含哪些分区，一般为 `train,val,test`            |
+| `graph_ranking_status`              | 是否存在可用于 Top/Low 排名的边分数                          |
+| `graph_intervention_status`         | 图干预是否实际计算                                           |
+| `graph_message_ablation_status`     | “关闭全部图消息”实验是否计算                                 |
+| `graph_ranking_intervention_status` | Top/Low/Random 排名干预是否实际计算                          |
+| `graph_reason`                      | 上述图指标不适用时的原因                                     |
+| `seed_std_kind`                     | `_std` 的定义，目前是独立训练 seed 之间的样本标准差          |
+
+比如 Local 没有边门控，因此图排名属于 `not_applicable`；FixedGraph 虽有图消息，但所有边都是全一门控，没有学习出的 Top/Low 排序。文档对此作了明确区分。
+
+| 列名根              | 含义                                | 趋势         |
+| ------------------- | ----------------------------------- | ------------ |
+| `mae`               | Mean Absolute Error，平均绝对误差   | **越小越好** |
+| `rmse`              | Root Mean Squared Error，均方根误差 | **越小越好** |
+| `mae_standardized`  | 标准化尺度 MAE                      | 越小越好     |
+| `rmse_standardized` | 标准化尺度 RMSE                     | 越小越好     |
+
+MAE 是文档规定的**主要预测指标**；RMSE 对少数大误差更加敏感。
+
+| 列名                      | 含义                          |
+| ------------------------- | ----------------------------- |
+| `skill_mean`              | 相对于 Persistence 的预测技能 |
+| `skill_standardized_mean` | 标准化尺度下的技能            |
+| `train_skill_*`           | 训练集 Skill                  |
+| `val_skill_*`             | 验证集 Skill                  |
+| `test_skill_*`            | 测试集 Skill                  |
+
+persistence_* ： 给 `skill` 提供基准分母
+
+| 列名根                          | 含义                               |
+| ------------------------------- | ---------------------------------- |
+| `fit_seconds`                   | 模型拟合/训练耗时                  |
+| `parameter_count`               | 可训练参数数量                     |
+| `windows`                       | 主评价中的窗口数量                 |
+| `valid_targets`                 | 实际参与误差计算的有效目标元素总数 |
+| `epochs`                        | 实际训练 epoch 数                  |
+| `best_epoch`                    | 验证指标最好的 epoch               |
+| `prediction_seconds`            | 完整预测所需时间                   |
+| `prediction_windows_per_second` | 每秒处理多少预测窗口               |
+| `evaluation_seconds`            | 整个评价过程耗时                   |
+| `fit_peak_gpu_allocated_mb`     | 训练时峰值 GPU 已分配显存，单位 MB |
+
+| 列名根         | 含义                    |
+| -------------- | ----------------------- |
+| `gate_minimum` | 门控分数最小值          |
+| `gate_maximum` | 最大值                  |
+| `gate_mean`    | 平均门控分数            |
+| `gate_q0`      | 0% 分位，也就是最小值   |
+| `gate_q50`     | 中位数                  |
+| `gate_q90`     | 90% 分位                |
+| `gate_q99`     | 99% 分位                |
+| `gate_q100`    | 100% 分位，也就是最大值 |
+
+| 想回答的问题                   | 主要看这些列                                                 |
+| ------------------------------ | ------------------------------------------------------------ |
+| 谁预测最准？                   | `test_mae_mean`, `test_rmse_mean`, `test_skill_mean`         |
+| 稳不稳定？                     | `test_mae_std`, `test_rmse_std`                              |
+| 是否泛化？                     | `train_mae_mean`、`val_mae_mean`、`test_mae_mean`            |
+| 图消息有没有被模型利用？       | `graph_all_messages_off_delta_mean`                          |
+| 门控有没有塌缩？               | `gate_mean`, `gate_zero_fraction`, `gate_near_zero_fraction`, `gate_constant_window_fraction` |
+| Dynamic 是否真的在变化？       | `gate_mean_score_change`, `p05/p10/p20_adjacent_top_jaccard` |
+| Top 边是否比随机边重要？       | **`delete_excess`，希望 > 0**                                |
+| Top 少量边是否足够？           | `keep_top_delta`，希望接近 0                                 |
+| Top 是否比随机保留更好？       | **`keep_excess`，希望 < 0**                                  |
+| 结果是不是随机抽边碰巧造成的？ | `delete_random_std`, `keep_random_std`                       |
