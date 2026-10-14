@@ -18,6 +18,9 @@
 | [GPU 与验证约定](docs/06_gpu_and_verification.md) | 自动选择设备、显存、可复现边界与验证证据 |
 | [实际验证结果](docs/07_verification_results.md) | 已完成的小型六模型运行、误差与检查范围 |
 | [三分区保存与结果汇总](docs/08_result_summaries.md) | 训练／验证／测试完整产物、六模型指标汇总与适用范围 |
+| [连续窗口补绘与训练接入](docs/09_consecutive_plotting.md) | 独立批量补绘、筛边、命名与参数、可选训练接入补丁 |
+| [基线与消融方案审查](docs/10_baseline_and_ablation_review.md) | B1–B6／M0–M7 的公平性、双空间路径及损失设计 |
+| [指标审查与旧论文对应](docs/11_metrics_review_and_legacy_mapping.md) | 忠实度、动态图稳定性、旧指标适用条件及定义差异 |
 
 这些文档只用公式与文字描述方法，不含程序代码。入口的参数说明由 `run_experiment.py` 自身提供；数据协议和实验配置分别放在 `configs` 中，结果放在 `outputs` 中。
 

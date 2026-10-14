@@ -1,0 +1,48 @@
+diff --git a/intent_graph_261013/experiment/evaluation.py b/intent_graph_261013/experiment/evaluation.py
+--- a/intent_graph_261013/experiment/evaluation.py
++++ b/intent_graph_261013/experiment/evaluation.py
+@@ -12,5 +12,5 @@
+               "absolute_threshold": None, "near_zero": 1e-8,
+               "max_plot_windows": 3, "graph_interventions": True,
+-              "graph_intervention_splits": ["test"]}
++              "graph_intervention_splits": ["test"], "sequence_plots": None}
+     unknown = set(config) - set(result)
+     if unknown:
+@@ -42,3 +42,6 @@
+             or not set(splits) <= {"train", "val", "test"}):
+         raise ValueError("graph_intervention_splits must list unique train/val/test names")
++    if result["sequence_plots"] is not None:
++        from .sequence_plot_hook import validate_sequence_plot_settings
++        result["sequence_plots"] = validate_sequence_plot_settings(result["sequence_plots"])
+     return result
+diff --git a/intent_graph_261013/experiment/artifacts.py b/intent_graph_261013/experiment/artifacts.py
+--- a/intent_graph_261013/experiment/artifacts.py
++++ b/intent_graph_261013/experiment/artifacts.py
+@@ -111,5 +111,8 @@
+     plots = []
+     if make_plots:
+         from .visualization import make_run_plots
+         plots = make_run_plots(destination, fit, evaluation, data)
++        from .sequence_plot_hook import render_saved_split
++        plots += render_saved_split(destination,
++                                    evaluation.get("evaluation_config", {}).get("sequence_plots"))
+     write_json(destination / "run_summary.json", summary)
+diff --git a/intent_graph_261013/run_experiment.py b/intent_graph_261013/run_experiment.py
+--- a/intent_graph_261013/run_experiment.py
++++ b/intent_graph_261013/run_experiment.py
+@@ -3,2 +3,3 @@
+ import argparse
++import json
+ from pathlib import Path
+@@ -31,2 +32,4 @@
+     parser.add_argument("--no-plots", action="store_true")
++    parser.add_argument("--sequence-plots", type=Path,
++                        help="Optional JSON settings for adjacent test plots, e.g. configs/sequence_plots.json")
+     parser.add_argument("--prepare-only", action="store_true")
+@@ -51,3 +54,5 @@
+     if args.graph_intervention_splits is not None:
+         evaluation["graph_intervention_splits"] = args.graph_intervention_splits
++    if args.sequence_plots is not None:
++        evaluation["sequence_plots"] = json.loads(args.sequence_plots.read_text(encoding="utf-8"))
+     model = {} if args.encoder is None else {"encoder": args.encoder}
+

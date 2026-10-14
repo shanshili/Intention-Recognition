@@ -1,0 +1,12 @@
+{
+  "start": 0,
+  "count": 10,
+  "panel_count": 10,
+  "mode": "topk",
+  "fraction": 0.1,
+  "quantile": 0.9,
+  "formats": ["png", "svg", "pdf"],
+  "dpi": 300,
+  "norm_scale": "log",
+  "node_labels": "index"
+}
