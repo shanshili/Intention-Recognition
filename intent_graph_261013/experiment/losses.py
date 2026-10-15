@@ -57,7 +57,10 @@ def compute_loss(model, output, batch, config):
         if previous_mask.any() and scores.numel():
             previous_history = torch.as_tensor(batch["previous_history"], dtype=torch.float32,
                                                device=model.device)
-            previous_scores = model.module.raw_scores(model.module.encode(previous_history))
+            if hasattr(model.module, "score_history"):
+                previous_scores = model.module.score_history(previous_history)
+            else:
+                previous_scores = model.module.raw_scores(model.module.encode(previous_history))
             temporal = torch.abs(scores[previous_mask] - previous_scores[previous_mask]).mean()
     total = prediction_loss + config["sparse"] * sparse + config["direction"] * direction + config["temporal"] * temporal
     pieces = {"prediction": prediction_loss, "sparse": sparse, "direction": direction,

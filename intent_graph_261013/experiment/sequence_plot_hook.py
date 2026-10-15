@@ -1,7 +1,7 @@
-"""Optional post-save hook for future training-time consecutive plots.
+"""Post-save hook for optional training-time consecutive plots.
 
-The current trainer is unchanged. integration/consecutive_training.patch shows
-the small opt-in wiring. This hook reads already-saved artifacts, never a model.
+The save pipeline calls this hook when sequence_plots settings are enabled.
+This hook reads already-saved artifacts, never a model.
 """
 
 from pathlib import Path

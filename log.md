@@ -2749,5 +2749,100 @@ persistence_* ： 给 `skill` 提供基准分母
 | Top 是否比随机保留更好？       | **`keep_excess`，希望 < 0**                                  |
 | 结果是不是随机抽边碰巧造成的？ | `delete_random_std`, `keep_random_std`                       |
 
+### suite_20261013_221703_583502
+
+使用 30 天、100 个节点的数据，历史窗口 12 步，预测未来 3 步；四个神经模型各运行 3 个种子，使用 GPU，训练上限 20 轮，部分因早停提前结束。
+
+共保存 14 次模型运行、42 组三分区结果。我检查了各模型的数据指纹，并从保存的预测数组重新计算全部三分区 MAE，均与摘要一致。
+
+测试集结果如下，± 表示三个训练种子的样本标准差：
+
+| 模型        | MAE ↓              | RMSE ↓        | 相对 Persistence 的 MAE 改善 |
+| ----------- | ------------------ | ------------- | ---------------------------- |
+| Persistence | 16.303             | 30.729        | —                            |
+| Ridge-AR    | 15.103             | 29.387        | 7.36%                        |
+| Local       | 14.083 ± 0.210     | 27.037        | 13.62%                       |
+| FixedGraph  | 13.722 ± 0.083     | **26.321**    | 15.83%                       |
+| StaticGate  | 13.782 ± 0.179     | 26.408        | 15.46%                       |
+| DynamicGate | **13.701 ± 0.109** | <u>26.397</u> | **15.96%**                   |
+
+来源：[模型比较汇总](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/outputs/suite_20261013_221703_583502/comparison.csv)。
+
+**本节点历史预测有效。** Local 明显优于 Persistence 和 Ridge，说明神经预测器学到了有用的时间规律。
+
+**空间信息有增益。** FixedGraph 比 Local 的 MAE 再下降约 2.56%，支持加入邻居消息。但新增消息参数也改变了模型容量，所以不能把全部增益严格归因于图结构。
+
+**动态门控的额外收益很小。** DynamicGate 比 FixedGraph 的 MAE 仅低约 **0.15%**，RMSE 反而略高；三个种子中，动态模型并非每次都胜出。因此，现在更准确的结论是：
+
+> 固定图已经较有效，动态门控与固定图表现接近，尚无稳定优势。
+
+未来 5、10、15 分钟的平均 MAE，DynamicGate 分别为 11.686、13.940、15.477，FixedGraph 为 11.674、13.981、15.510；差距都很小。
+
 ## 261015
 
+1. 绘图代码与训练接入
+
+直接运行入口是 [plot_intent_sequences.py](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/plot_intent_sequences.py)。在 `intent_graph_261013` 目录运行：
+
+```
+python plot_intent_sequences.py
+```
+
+默认读取你指定的 `suite_20261013_221703_583502`，遍历全部模型、全部种子，保存连续 10 帧的 PNG／SVG／PDF。调整起点、数量和格式，例如：
+
+```
+python plot_intent_sequences.py --viz-start-test 20 --viz-count 97 --formats png
+```
+
+只绘制 DynamicGate 的 seed 0，使用已保存的验证阈值：
+
+```
+python plot_intent_sequences.py --models dynamic_gate --seeds 0 --mode saved_threshold
+```
+
+支持旧版 `--q` 分位数方式、精确 Top-K、节点标签、线宽、画布、DPI、坐标范围和固定颜色范围。每组输出包含逐帧图片、连续拼图、候选图、密度曲线、窗口索引 CSV 和 JSON 清单；同一序列共用颜色尺度。
+
+.\run_construction.ps1 --protocol configs/protocol_construction_full.json --device cuda --epochs 50 --patience 8 --min-delta 0
+
+.\run_construction.ps1 --protocol configs/protocol_construction_dev.json --models M3 M4 M5 M6 M7 --device cuda --batch-size 4 --epochs 100 --patience 15
+
+### suite_20261015_022730_638592
+
+61,056 个五分钟时刻，约 212 天，从 2025-01-01 开始。训练配置是 50 轮上限、早停耐心 8、batch=32、CUDA。
+
+已完成 21 个模型／种子运行：
+
+- Persistence、Ridge-AR：各 1 次；
+- Local、FixedGraph、StaticGate、DynamicGate、M1、M2：各 3 个种子；
+- M3：只有 seed 0。
+
+每个已完成运行都有训练、验证、测试分区结果。目录在 [本次 suite](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/outputs/suite_20261015_022730_638592)，当前状态见 [suite_summary.json](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/outputs/suite_20261015_022730_638592/suite_summary.json)。
+
+### 已完成模型的测试结果
+
+| 模型              | 测试 MAE ↓         | 测试 RMSE ↓ | 完成种子 |
+| ----------------- | ------------------ | ----------- | -------- |
+| Persistence       | 14.756             | 26.028      | 1        |
+| Ridge-AR          | 13.311             | 23.600      | 1        |
+| Local             | 12.004 ± 0.049     | 22.023      | 3        |
+| FixedGraph        | 11.569 ± 0.057     | **21.186**  | 3        |
+| StaticGate        | 11.690 ± 0.057     | 21.210      | 3        |
+| DynamicGate（M0） | **11.545 ± 0.125** | 21.135      | 3        |
+| M1                | 13.054 ± 0.251     | 23.718      | 3        |
+| M2                | 12.973 ± 0.140     | 23.575      | 3        |
+| M3                | 12.841             | 23.211      | 1        |
+
+± 是三个种子的样本标准差。基线结果显示，神经模型和固定图整体优于 Persistence、Ridge；但 M1、M2 在这次运行中明显落后于 FixedGraph。M3 只有一个种子，不能和三种子结果等量比较。
+
+**目前能得出的结论**
+
+**1. M1、M2 这次没有显示出增加前置 GAT／TCN 的收益。**
+两者测试 MAE 都约 12.97–13.05，而 FixedGraph 约 11.57。M3 seed 0 的 MAE 是 12.84，仍明显高于固定图。原因不能简单归结为七维特征：M1、M2 用 X1，M3 才切换到 X7；同时新增了前置 GAT，改变了信息路径与优化难度。
+
+**2. M3 的门控排名有一定模型内作用，但稀疏子图不够充分。**
+M3 seed 0 的 Top-10% 删除使 MAE 增加约 **0.852**，相对同预算随机删除额外增加约 **0.483**，说明排序不是完全随机。但只保留 Top-10% 时 MAE 增加约 **7.62**，表示这部分边无法维持完整模型预测。它支持“某些高分边对该模型有用”，不支持“Top-10% 已形成足够的预测子图”。而且这只是一个种子。
+
+**3. 预测稳定不代表解释稳定。**
+在更早完成的 DynamicGate 中，三个种子的测试 MAE 很接近，但关闭全部后置图消息后性能损失差异较大。这提示不同种子可能依赖图通道的程度不同；不能只看平均 MAE 就说学到稳定意图图。
+
+各模型汇总见 [comparison.csv](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/outputs/suite_20261015_022730_638592/comparison.csv)，M3 的逐种子、逐分区信息见 [M3 seed 0 摘要](C:/Work-lcr/Tjnu-p/Mp/Intention-Recognition/intent_graph_261013/outputs/suite_20261015_022730_638592/m3/seed_0/run_summary.json)。

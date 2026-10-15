@@ -4,7 +4,7 @@
 
 独立入口为 plot_intent_sequences.py；绘制实现为 experiment/sequence_visualization.py。入口只读取已保存的 edge_scores.npz 以及同一运行的 resolved_config.json、graph_evaluation.json，不读取原始流量、不加载模型、不重新推断、不训练。默认实验目录是 outputs/suite_20261013_221703_583502，默认测试分区、全部模型和全部种子。
 
-现有训练入口与评估计算保持原状。integration/consecutive_training.patch 是可审阅、尚未应用的局部接入补丁；experiment/sequence_plot_hook.py 和 configs/sequence_plots.json 为补丁提供公共调用与参数。
+连续绘图已经接入训练保存流程。integration/consecutive_training.patch 留作此前局部接入方案的历史参考，无需再次应用；experiment/sequence_plot_hook.py 和 configs/sequence_plots.json 提供公共调用与参数。
 
 ## 2. 与 260628 的对应
 
@@ -109,7 +109,7 @@ $$
 
 ## 7. 以后训练时保存连续图片的局部修改方案
 
-可选补丁只涉及三个现有文件；本轮没有将该补丁应用到训练主流程。
+该局部方案现已集成到三个现有文件，不需要另外应用补丁。
 
 | 文件 | 局部修改 | 原因 |
 |---|---|---|
@@ -119,7 +119,7 @@ $$
 
 render_saved_split 读取刚保存的分区产物，内部复用 load_sequence 与 render_sequence。无需在训练器、模型 forward、梯度更新或阈值标定代码中添加绘图。
 
-configs/sequence_plots.json 提供一套可调整的默认设置。应用可选补丁后，入口通过 sequence-plots 指向该文件即可启用；未指定时保持原运行方式，no-plots 仍关闭全部绘图。
+configs/sequence_plots.json 提供一套可调整的默认设置。旧六模型入口通过 sequence-plots 指向该文件即可启用；构建实验配置默认启用十个连续测试窗口，no-plots 仍关闭全部绘图。
 
 当前 save_multisplit_run 只对测试分区启用图片渲染，因此该最小补丁也只自动绘制测试序列。若希望训练、验证也自动出图，需要进一步将分区绘图选择从固定 test 改为显式分区集合；独立补绘入口已经支持三分区。
 

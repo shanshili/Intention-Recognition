@@ -2,6 +2,8 @@
 
 本目录用于回答一个具体问题：在相同数据、目标窗口与评价方法下，空间消息、静态边门控和动态边门控分别提供多少增益？首先建立可信的预测基线，再验证意图图的基本单元，随后逐项增加模型部件与损失项。
 
+M1–M7 构建实验现已实现，独立入口为 run_construction.py／run_construction.ps1，配置为 configs/experiments_construction.json。原入口仍默认六模型配置；新入口默认 B1–B6 加 M1–M7，M0 与 B6 共用 DynamicGate。每个神经训练 epoch 都打印损失、验证指标和早停状态，构建实验默认自动保存相邻测试窗口图片。正式运行与参数位置见下方构建文档。
+
 当前模型组包括 Persistence、Ridge-AR、Local、FixedGraph、StaticGate 和 DynamicGate。Persistence 无需拟合；Ridge-AR 用带正则的线性历史模型建立主要预测基线；后四项共用节点历史编码器、消息投影和预测头，以边门控方式区分模型。
 
 默认试验使用最近 12 个五分钟观测，直接预测未来 3 步。默认节点特征只有流量历史，默认损失只有预测损失。动态图分数首先称为“边门控分数”；是否能够反映预测贡献，需要通过删边、留边与随机对照检查。
@@ -21,6 +23,7 @@
 | [连续窗口补绘与训练接入](docs/09_consecutive_plotting.md) | 独立批量补绘、筛边、命名与参数、可选训练接入补丁 |
 | [基线与消融方案审查](docs/10_baseline_and_ablation_review.md) | B1–B6／M0–M7 的公平性、双空间路径及损失设计 |
 | [指标审查与旧论文对应](docs/11_metrics_review_and_legacy_mapping.md) | 忠实度、动态图稳定性、旧指标适用条件及定义差异 |
+| [构建实验实现与正式运行](docs/12_construction_implementation_and_running.md) | B1–B6／M0–M7 实现、入口、epoch、早停、逐轮日志及验证范围 |
 
 这些文档只用公式与文字描述方法，不含程序代码。入口的参数说明由 `run_experiment.py` 自身提供；数据协议和实验配置分别放在 `configs` 中，结果放在 `outputs` 中。
 

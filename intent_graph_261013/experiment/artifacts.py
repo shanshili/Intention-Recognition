@@ -112,6 +112,9 @@ def save_run(output_dir, data, model, fit, evaluation, summary, make_plots=True)
     if make_plots:
         from .visualization import make_run_plots
         plots = make_run_plots(destination, fit, evaluation, data)
+        from .sequence_plot_hook import render_saved_split
+        plots += render_saved_split(destination,
+                                    evaluation.get("evaluation_config", {}).get("sequence_plots"))
     write_json(destination / "run_summary.json", summary)
     return {"output_dir": str(destination.resolve()), "target_fingerprint": summary["target_fingerprint"],
             "plots": plots}

@@ -12,7 +12,7 @@ def validate_evaluation_config(config):
               "random_seeds": list(range(20)), "threshold_quantile": 0.9,
               "absolute_threshold": None, "near_zero": 1e-8,
               "max_plot_windows": 3, "graph_interventions": True,
-              "graph_intervention_splits": ["test"]}
+              "graph_intervention_splits": ["test"], "sequence_plots": None}
     unknown = set(config) - set(result)
     if unknown:
         raise ValueError(f"Unknown evaluation settings: {sorted(unknown)}")
@@ -42,6 +42,9 @@ def validate_evaluation_config(config):
     if (not isinstance(splits, list) or len(set(splits)) != len(splits)
             or not set(splits) <= {"train", "val", "test"}):
         raise ValueError("graph_intervention_splits must list unique train/val/test names")
+    if result["sequence_plots"] is not None:
+        from .sequence_plot_hook import validate_sequence_plot_settings
+        result["sequence_plots"] = validate_sequence_plot_settings(result["sequence_plots"])
     return result
 
 

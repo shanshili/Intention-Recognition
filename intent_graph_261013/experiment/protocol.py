@@ -34,6 +34,7 @@ def load_protocol(path: str | Path, overrides: dict | None = None) -> dict:
         "missing_mask_path": None,
         "max_steps": None,
         "start_time": "2025-01-01 00:00:00",
+        "timestamp_source": "configured_regular_grid_not_verified_source_timestamps",
         "step_minutes": 5,
         "W": 12,
         "H": 3,
@@ -41,6 +42,7 @@ def load_protocol(path: str | Path, overrides: dict | None = None) -> dict:
         "eval_stride": 1,
         "split_ratios": [0.6, 0.2, 0.2],
         "features": ["level"],
+        "periodic_residual_resolution": "minute",
         "candidate_graph": {"k": 4, "tau_max": 4},
         "known_missing_intervals": [],
         "input_fill": "forward_train_mean",
@@ -73,6 +75,13 @@ def load_protocol(path: str | Path, overrides: dict | None = None) -> dict:
         raise ValueError("features must be unique and start with level")
     if not set(selected) <= {"level", "delta", "time", "periodic_residual"}:
         raise ValueError("Unknown feature selection")
+    if protocol["periodic_residual_resolution"] not in {"minute", "hour"}:
+        raise ValueError("periodic_residual_resolution must be minute or hour")
+    if protocol["timestamp_source"] not in {
+        "configured_regular_grid_not_verified_source_timestamps",
+        "user_confirmed_start_regular_grid",
+    }:
+        raise ValueError("Unknown timestamp_source")
     if protocol["input_fill"] != "forward_train_mean" or protocol["target_missing_policy"] != "observed_only":
         raise ValueError("Only causal forward filling and original observed targets are supported")
     if protocol["std_epsilon"] <= 0:

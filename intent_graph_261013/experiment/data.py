@@ -155,13 +155,19 @@ def prepare_data(protocol_path: str | Path, overrides: dict | None = None) -> Pr
             channel_names.extend(["time_sin", "time_cos", "weekday_sin", "weekday_cos"])
         elif feature == "periodic_residual":
             residual = level.copy()
-            slot = weekday * 1440 + minute
+            if protocol["periodic_residual_resolution"] == "hour":
+                slot = weekday * 24 + calendar.hour.to_numpy()
+            else:
+                slot = weekday * 1440 + minute
             for key in np.unique(slot):
                 training_rows = np.flatnonzero(slot[:train_end] == key)
                 if len(training_rows):
                     masks = observed[training_rows]
                     counts = masks.sum(axis=0)
-                    sums = np.where(masks, targets[training_rows], 0).sum(axis=0)
+                    # Calendar expectation uses observed training values only.
+                    # The causal input fill is never treated as an observation.
+                    normalized = (raw[training_rows] - mean) / std
+                    sums = np.where(masks, normalized, 0).sum(axis=0)
                     expectation = np.divide(sums, counts, out=np.zeros(N), where=counts > 0)
                     residual[slot == key] -= expectation
             channels.append(residual[..., None])
@@ -185,7 +191,10 @@ def prepare_data(protocol_path: str | Path, overrides: dict | None = None) -> Pr
                 "observed_fraction": float(observed.mean()),
                 "external_missing_mask_used": bool(mask_path),
                 "mask_validation_scope": "full_row_count_header_and_used_values" if mask_path else "none",
-                "timestamp_source": "configured_regular_grid_not_verified_source_timestamps",
+                "timestamp_source": protocol["timestamp_source"],
+                "timestamp_start_user_confirmed": protocol["timestamp_source"] == "user_confirmed_start_regular_grid",
+                "timestamps_independently_verified": False,
+                "periodic_residual_resolution": protocol["periodic_residual_resolution"],
                 "feature_channels": channel_names,
                 "provenance": {"data": "adapted from 260628/deig/data.py",
                                "graph": "copied and adapted from 260628/deig/graph.py"}}

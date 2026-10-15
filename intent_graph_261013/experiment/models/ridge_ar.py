@@ -93,6 +93,8 @@ class RidgeAR:
             self.coef, self.intercept = self._fit_alpha(history, target, mask, last, float(alpha))
             score = self._validation_mae(val_dataset, batch_size)
             validation.append({"alpha": float(alpha), "val_mae": score})
+            print(f"[ridge] model={self.name} alpha={float(alpha):g} "
+                  f"val_MAE_std={score:.8g} solver=closed_form_svd", flush=True)
             if best is None or score < best[0]:
                 best = (score, float(alpha), self.coef.copy(), self.intercept.copy())
         _, self.alpha, self.coef, self.intercept = best

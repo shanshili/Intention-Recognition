@@ -1,0 +1,237 @@
+{
+  "models": {
+    "persistence": {
+      "input_features": "level"
+    },
+    "ridge_ar": {
+      "input_features": "level",
+      "alpha": 1,
+      "alpha_candidates": [
+        0.01,
+        0.1,
+        1,
+        10
+      ]
+    },
+    "local": {
+      "input_features": "level",
+      "encoder": "mlp",
+      "encoder_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32
+    },
+    "fixed_graph": {
+      "input_features": "level",
+      "encoder": "mlp",
+      "encoder_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32
+    },
+    "static_gate": {
+      "input_features": "level",
+      "encoder": "mlp",
+      "encoder_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32
+    },
+    "dynamic_gate": {
+      "input_features": "level",
+      "encoder": "mlp",
+      "encoder_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32
+    },
+    "m1": {
+      "input_features": "level",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m2": {
+      "input_features": "level",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m3": {
+      "input_features": "full",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m4": {
+      "input_features": "full",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m5": {
+      "input_features": "full",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m6": {
+      "input_features": "full",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    },
+    "m7": {
+      "input_features": "full",
+      "encoder_hidden": 24,
+      "gat_hidden": 24,
+      "tcn_hidden": 24,
+      "msg_dim": 16,
+      "head_hidden": 32,
+      "gate_hidden": 32,
+      "tcn_kernel_size": 3,
+      "tcn_dilations": [
+        1,
+        2,
+        4
+      ],
+      "temporal_attention_hidden": 24,
+      "max_lag": 4
+    }
+  },
+  "training": {
+    "device": "auto",
+    "deterministic": false,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "epochs": 100,
+    "patience": 15,
+    "batch_size": 32,
+    "learning_rate": 0.001,
+    "weight_decay": 0,
+    "min_delta": 0,
+    "gradient_clip": 5,
+    "cpu_threads": 2,
+    "loss": {
+      "prediction": "huber",
+      "huber_delta": 1,
+      "sparse": 0,
+      "direction": 0,
+      "temporal": 0
+    }
+  },
+  "evaluation": {
+    "batch_size": 8,
+    "top_fractions": [
+      0.05,
+      0.1,
+      0.2
+    ],
+    "random_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "threshold_quantile": 0.9,
+    "graph_intervention_splits": [
+      "test"
+    ],
+    "max_plot_windows": 3,
+    "sequence_plots": {
+      "start": 0,
+      "count": 10,
+      "panel_count": 10,
+      "mode": "topk",
+      "fraction": 0.1,
+      "formats": [
+        "png"
+      ],
+      "dpi": 150,
+      "norm_scale": "log",
+      "node_labels": "index"
+    }
+  }
+}

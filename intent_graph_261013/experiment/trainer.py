@@ -10,16 +10,25 @@ from .losses import compute_loss, validate_loss_config
 
 
 def validation_mae(model, dataset, batch_size):
-    error_sum, count = 0.0, 0
+    error_sum, loss_sum, count = 0.0, 0.0, 0
+    loss_cfg = getattr(model, "validation_loss_config", {"prediction": "mae"})
     for batch in dataset.iter_batches(batch_size):
         prediction = model.predict(batch)["prediction"]
         mask = np.asarray(batch["target_mask"], dtype=bool)
         if not np.isfinite(prediction[mask]).all():
             raise FloatingPointError("Validation prediction contains nonfinite observed outputs.")
-        error_sum += float(np.abs(prediction - batch["target"])[mask].sum(dtype=np.float64))
+        error = np.abs(prediction - batch["target"])[mask].astype(np.float64)
+        error_sum += float(error.sum(dtype=np.float64))
+        if loss_cfg["prediction"] == "huber":
+            delta = loss_cfg["huber_delta"]
+            values = np.where(error <= delta, 0.5 * error ** 2, delta * (error - 0.5 * delta))
+        else:
+            values = error
+        loss_sum += float(values.sum(dtype=np.float64))
         count += int(mask.sum())
     if count == 0:
         raise ValueError("Validation dataset contains no observed targets.")
+    model.last_validation_prediction_loss = loss_sum / count
     return error_sum / count
 
 
@@ -47,6 +56,7 @@ def fit_neural(model, train_dataset, val_dataset, config):
     if learning_rate <= 0 or weight_decay < 0 or min_delta < 0 or gradient_clip < 0:
         raise ValueError("learning_rate must be positive; weight_decay/min_delta/gradient_clip nonnegative.")
     loss_config = validate_loss_config(config.get("loss"), model)
+    model.validation_loss_config = loss_config
     model.configure_device(config.get("device", "auto"))
     if model.device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(model.device)
@@ -69,8 +79,12 @@ def fit_neural(model, train_dataset, val_dataset, config):
     best_state = copy.deepcopy(model.module.state_dict())
     best_epoch, no_improve = 0, 0
     history = [{"epoch": 0, "val_mae": best_mae, "train_loss": None,
+                "val_prediction_loss": getattr(model, "last_validation_prediction_loss", None),
                 "train_observed_targets": 0, "batches": 0}]
+    print(f"[epoch] model={model.name} seed={model.seed} epoch=0/{epochs} "
+          f"train_loss=N/A val_MAE_std={best_mae:.8g} initialization=persistence", flush=True)
     for epoch in range(1, epochs + 1):
+        epoch_started = time.perf_counter()
         model.module.train()
         sums = {name: 0.0 for name in ("prediction", "sparse", "direction", "temporal", "total")}
         observed_total, batch_count = 0, 0
@@ -97,6 +111,7 @@ def fit_neural(model, train_dataset, val_dataset, config):
             raise ValueError("Training dataset contains no observed targets.")
         val_mae = validation_mae(model, val_dataset, batch_size)
         record = {"epoch": epoch, "val_mae": val_mae,
+                  "val_prediction_loss": getattr(model, "last_validation_prediction_loss", None),
                   "train_loss": {name: value / observed_total for name, value in sums.items()},
                   "train_observed_targets": observed_total, "batches": batch_count}
         history.append(record)
@@ -106,13 +121,26 @@ def fit_neural(model, train_dataset, val_dataset, config):
             no_improve = 0
         else:
             no_improve += 1
-            if no_improve >= patience:
-                break
+        record["best_epoch"] = best_epoch
+        record["no_improvement_epochs"] = no_improve
+        record["epoch_seconds"] = time.perf_counter() - epoch_started
+        pieces_text = " ".join(f"{key}={value:.8g}" for key, value in record["train_loss"].items())
+        val_loss = record["val_prediction_loss"]
+        val_loss_text = "N/A" if val_loss is None else f"{val_loss:.8g}"
+        print(f"[epoch] model={model.name} seed={model.seed} epoch={epoch}/{epochs} "
+              f"{pieces_text} val_prediction_loss={val_loss_text} val_MAE_std={val_mae:.8g} "
+              f"best_epoch={best_epoch} no_improve={no_improve}/{patience} "
+              f"seconds={record['epoch_seconds']:.3f}", flush=True)
+        if no_improve >= patience:
+            print(f"[early_stop] model={model.name} seed={model.seed} epoch={epoch}; "
+                  f"restore_best_epoch={best_epoch}", flush=True)
+            break
     model.module.load_state_dict(best_state)
     model.module.eval()
     return {"kind": model.kind, "epochs": len(history) - 1,
             "requested_epochs": epochs, "actual_epochs": len(history) - 1,
             "stopped_early": len(history) - 1 < epochs, "best_epoch": best_epoch,
+            "selection_metric": "val_mae_standardized", "patience": patience, "min_delta": min_delta,
             "val_mae": best_mae, "history": history, "loss": loss_config,
             "fit_seconds": time.perf_counter() - started, "parameter_count": model.parameter_count,
             "restored_best_checkpoint": True, "initialization": "zero_residual_persistence",

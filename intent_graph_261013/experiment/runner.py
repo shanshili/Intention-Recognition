@@ -18,7 +18,7 @@ from .artifacts import save_multisplit_run, write_json
 from .data import prepare_data
 from .dataset import WindowDataset
 from .evaluation import evaluate_model, validate_evaluation_config
-from .models import MODEL_NAMES, make_model
+from .models import MODEL_NAMES, NEURAL_MODEL_NAMES, canonical_model_name, make_model
 from .protocol import protocol_hash
 
 
@@ -59,10 +59,16 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
     experiments = json.loads(Path(experiments_path).read_text(encoding="utf-8"))
     if set(experiments) != {"models", "training", "evaluation"}:
         raise ValueError("Experiment config must contain only models, training, evaluation")
-    selected = list(models) if models is not None else list(experiments["models"])
+    configured_models = {}
+    for requested_name, model_config in experiments["models"].items():
+        name = canonical_model_name(requested_name)
+        if name in configured_models:
+            raise ValueError(f"Duplicate aliases for {name}; B6 and M0 must share one run")
+        configured_models[name] = model_config
+    selected = [canonical_model_name(name) for name in models] if models is not None else list(configured_models)
     if not selected or len(set(selected)) != len(selected) or any(name not in MODEL_NAMES for name in selected):
         raise ValueError(f"Choose unique model names from {MODEL_NAMES}")
-    if any(name not in experiments["models"] for name in selected):
+    if any(name not in configured_models for name in selected):
         raise ValueError("Every selected model must have a model configuration")
     training = dict(experiments["training"])
     supplied_training = dict(training_overrides or {})
@@ -95,16 +101,27 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
                    "evaluation_signature": identity, "output_dir": str(suite), "data": data.metadata}
         write_json(suite / "suite_summary.json", summary)
         return summary
-    datasets = {name: WindowDataset(data, name) for name in data.splits}
     environment, code = environment_metadata(), code_metadata()
     records, run_paths = [], []
     for name in selected:
-        config = dict(experiments["models"][name])
-        if name in MODEL_NAMES[2:]:
-            config.update(model_overrides or {})
-        model_seeds = active_seeds if name in MODEL_NAMES[2:] else [0]
+        config = dict(configured_models[name])
+        if name in NEURAL_MODEL_NAMES:
+            overrides = dict(model_overrides or {})
+            if name.startswith("m"):
+                # Construction version defines its temporal encoder; --encoder
+                # remains an override for the four original neural controls.
+                overrides.pop("encoder", None)
+            config.update(overrides)
+        feature_set = config.get("input_features")
+        if feature_set is not None:
+            from .model_inputs import select_model_inputs
+            model_data = select_model_inputs(data, feature_set)
+        else:
+            model_data = data
+        datasets = {split: WindowDataset(model_data, split) for split in data.splits}
+        model_seeds = active_seeds if name in NEURAL_MODEL_NAMES else [0]
         for seed in model_seeds:
-            model = make_model(name, data, config, seed)
+            model = make_model(name, model_data, config, seed)
             print(f"[fit] model={name}; seed={seed}; kind={model.kind}", flush=True)
             fit = model.fit(datasets["train"], datasets["val"], training)
             print(f"[fit] finished model={name}; best_epoch={fit.get('best_epoch')}; "
@@ -130,12 +147,13 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
                        "training_config": run_training, "evaluation_config": evaluation,
                        "fit": fit, "metrics": result["metrics"], "graph_metrics": result["graph_metrics"],
                        "capabilities": model.capabilities,
-                       "data": {**data.metadata, "step_minutes": data.protocol["step_minutes"]},
+                       "construction": getattr(model, "construction_metadata", None),
+                       "data": {**model_data.metadata, "step_minutes": data.protocol["step_minutes"]},
                        "environment": environment, "code_version": code}
             extension = {"gradient": ".pt", "closed_form": ".npz", "none": ".json"}[model.kind]
             run_path.mkdir(parents=True, exist_ok=False)
             model.save(run_path / ("model" + extension))
-            saved = save_multisplit_run(run_path, data, model, fit, evaluations, summary,
+            saved = save_multisplit_run(run_path, model_data, model, fit, evaluations, summary,
                                         make_plots=make_plots)
             records.append({"model": name, "seed": seed, "run": saved["output_dir"],
                             "mae": result["metrics"]["mae"], "skill": result["metrics"]["skill"],

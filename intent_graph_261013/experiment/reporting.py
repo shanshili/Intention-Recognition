@@ -155,6 +155,9 @@ def build_suite_reports(comparison):
         efficiency = {**base, "device": fit.get("device", "cpu"), "gpu_name": fit.get("gpu_name"),
                       "fit_kind": fit.get("kind", "unknown"), "fit_seconds": fit.get("fit_seconds"),
                       "parameter_count": fit.get("parameter_count"), "epochs": fit.get("epochs"),
+                      "requested_epochs": fit.get("requested_epochs"), "actual_epochs": fit.get("actual_epochs"),
+                      "stopped_early": fit.get("stopped_early"), "patience": fit.get("patience"),
+                      "min_delta": fit.get("min_delta"), "selection_metric": fit.get("selection_metric"),
                       "best_epoch": fit.get("best_epoch"), "fit_peak_gpu_allocated_mb": fit.get("peak_gpu_allocated_mb"),
                       "status": "computed", "available_splits": ",".join(split for split, _ in _split_records(detail))}
         split_metrics = {split: result.get("metrics", {}) for split, result in _split_records(detail)}

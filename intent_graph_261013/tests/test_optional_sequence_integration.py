@@ -1,4 +1,4 @@
-"""Apply the optional patch in isolation and exercise its training save hook."""
+"""Exercise the integrated training-time consecutive save hook in isolation."""
 
 import json
 from pathlib import Path
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OptionalSequenceIntegrationTests(unittest.TestCase):
-    def test_patch_saves_adjacent_test_figures_after_one_small_fit(self):
+    def test_training_saves_adjacent_test_figures_after_one_small_fit(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             project = base / "intent_graph_261013"
@@ -22,8 +22,6 @@ class OptionalSequenceIntegrationTests(unittest.TestCase):
                 shutil.copy2(ROOT / name, project / name)
             shutil.copytree(ROOT / "experiment", project / "experiment",
                             ignore=shutil.ignore_patterns("__pycache__"))
-            subprocess.run(["git", "apply", str(ROOT / "integration/consecutive_training.patch")],
-                           cwd=base, check=True, capture_output=True, text=True)
             config = json.loads((ROOT / "configs/protocol_smoke.json").read_text(encoding="utf-8"))
             for key in ("flow_path", "coord_path"):
                 config[key] = str((ROOT / config[key]).resolve())
