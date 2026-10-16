@@ -2,13 +2,15 @@
 
 from .persistence import Persistence
 from .ridge_ar import RidgeAR
+from .deig_variants import VARIANT_NAMES
 
 BASELINE_NAMES = ("persistence", "ridge_ar", "local", "fixed_graph", "static_gate", "dynamic_gate")
-CONSTRUCTION_NAMES = tuple(f"m{version}" for version in range(1, 8))
+CONSTRUCTION_NAMES = tuple(f"m{version}" for version in range(1, 8)) + VARIANT_NAMES
 MODEL_NAMES = BASELINE_NAMES + CONSTRUCTION_NAMES
 NEURAL_MODEL_NAMES = BASELINE_NAMES[2:] + CONSTRUCTION_NAMES
 MODEL_ALIASES = {**{f"b{index + 1}": name for index, name in enumerate(BASELINE_NAMES)},
-                 "m0": "dynamic_gate"}
+                 "m0": "dynamic_gate", "m7_l0": "m7", "m7_dynamic_intent": "m7",
+                 "m7_no_dynamic_edge": "m5_attention", "m7_no_temporal_attention": "m6"}
 
 
 def canonical_model_name(name):

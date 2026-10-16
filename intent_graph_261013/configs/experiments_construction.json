@@ -160,6 +160,9 @@
       ],
       "temporal_attention_hidden": 24,
       "max_lag": 4
+    },
+    "m5_attention": {
+      "inherits": "m7"
     }
   },
   "training": {

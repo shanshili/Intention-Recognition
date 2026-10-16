@@ -30,6 +30,22 @@ def toy_data(scores=None, split="test", stride=1, kind="dynamic"):
 
 
 class SequenceVisualizationTests(unittest.TestCase):
+    def test_draw_clamps_float32_normalization_endpoint_roundoff(self):
+        import matplotlib.pyplot as plt
+        from experiment.sequence_visualization import _draw
+        data = toy_data()
+        fig, ax = plt.subplots()
+        try:
+            # Reproduce a float32 LogNorm result marginally above its endpoint.
+            _draw(ax, data, 0, np.ones(4, dtype=bool),
+                  lambda value: np.float32(1.0000001192092896), PlotSettings())
+            self.assertEqual(len(ax.patches), 4)
+            for arrow in ax.patches:
+                self.assertEqual(arrow.get_alpha(), 1.0)
+                self.assertEqual(arrow.get_linewidth(), PlotSettings().max_linewidth)
+        finally:
+            plt.close(fig)
+
     def test_exact_topk_stable_ties_and_zero_suppression(self):
         keep, drawn, _ = select_mask(np.array([.8, .8, .8, 0.]), "topk", fraction=.5)
         np.testing.assert_array_equal(np.flatnonzero(keep), [0, 1])

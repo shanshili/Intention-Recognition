@@ -46,7 +46,7 @@ def _draw_graph(ax, coords, edges, scores, keep, norm):
     drawn = keep & np.isfinite(scores) & (scores > 0)
     for edge in np.flatnonzero(drawn):
         i, j = edges[edge]
-        magnitude = float(norm(scores[edge]))
+        magnitude = float(np.clip(float(norm(scores[edge])), 0.0, 1.0))
         arrow = FancyArrowPatch(coords[i], coords[j], arrowstyle="-|>", mutation_scale=7,
                                 connectionstyle="arc3,rad=0.08", color=cmap(magnitude),
                                 linewidth=0.5 + 1.7 * magnitude, alpha=0.25 + 0.7 * magnitude,

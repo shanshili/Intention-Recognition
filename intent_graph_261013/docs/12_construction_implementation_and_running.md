@@ -20,7 +20,7 @@
 | M6 | m6 | X7 | 边感知 GAT | TCN 末端 | 再加动态边 d |
 | M7 | m7 | X7 | 边感知 GAT | TCN 时间注意力 | 静态边 e 与动态边 d |
 
-这不是完整母模型的全部单组件消融实现；本轮首先实现上述构建版本，全部默认只采用 Huber 预测损失。原有稀疏、方向和时间损失开关仍存在，第一轮构建建议保持权重为0。
+上述表格是原增量构建链，全部默认只采用 Huber 预测损失。后续新增 M5_ATTENTION（M5 加时间注意力）以及基于 M7-L0 的严格消融，详见第13份文档。原有稀疏、方向和时间损失开关仍存在，但严格结构消融入口要求它们保持为0。
 
 ## 2. 共同协议及初步实现约定
 
@@ -54,7 +54,7 @@ $$
 
 run_construction.py 和 run_construction.ps1 是新构建实验入口。PowerShell 脚本沿用已验证的 Python 3.10 解释器，避免系统中其他 Python 环境缺少 CUDA；INTENT_GRAPH_PYTHON 可显式指定另一个解释器。
 
-入口默认使用 configs/experiments_construction.json 和 configs/protocol_construction_dev.json。未选择 models 时，会运行13个不同模型，B1/B2各一次，11个神经模型各3种子，共35次运行；M0不会另外增加一次。
+入口默认使用 configs/experiments_construction.json 和 configs/protocol_construction_dev.json。加入 M5_ATTENTION 后，未选择 models 时会运行14个不同模型，B1/B2各一次，12个神经模型各3种子，共38次运行；M0不会另外增加一次。严格消融请使用独立 run_ablations 入口，其默认11个模型共33次训练。
 
 只想做 M0–M7 构建链时，选择 M0 到 M7 即可，共8个神经模型、默认24次运行。单独 M7 或某个种子也可通过同一入口选择。原 run_experiment.py／run.ps1 仍默认运行旧六模型配置。
 

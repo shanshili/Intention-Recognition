@@ -13,6 +13,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from .gated_forecaster import GatedForecaster
+from .deig_variants import resolve_model_spec
 
 
 FULL_FEATURE_CHANNELS = ("level", "delta", "periodic_residual", "time_sin",
@@ -138,13 +139,13 @@ class DeigTCNModule(nn.Module):
     def __init__(self, name, data, config):
         super().__init__()
         self.name = name
-        self.version = int(name[1:])
-        if self.version not in range(1, 8):
-            raise ValueError("DEIG construction version must be m1 through m7.")
+        self.spec = resolve_model_spec(name)
+        self.version = self.spec["version"]
         self.window, self.horizon = int(data.protocol["W"]), int(data.protocol["H"])
         self.n_nodes = int(data.features.shape[1])
         self.input_features = int(data.features.shape[2])
-        expected_features = 1 if self.version < 3 else 7
+        expected_features = self.spec["input_features"]
+        self.spatial_input_features = self.spec["spatial_input_features"]
         if self.input_features != expected_features:
             raise ValueError(f"{name} requires {expected_features} node channels; got {self.input_features}.")
         channels = data.protocol.get("feature_channels")
@@ -183,59 +184,75 @@ class DeigTCNModule(nn.Module):
                  if (int(j), int(i)) in lookup and e < lookup[(int(j), int(i))]]
         self.register_buffer("pair_a", torch.as_tensor([a for a, _ in pairs], dtype=torch.long))
         self.register_buffer("pair_b", torch.as_tensor([b for _, b in pairs], dtype=torch.long))
-        self.static_in_score = self.version >= 4
-        self.static_in_gat = self.version >= 5
-        self.dynamic_in_score = self.version >= 6
-        self.temporal_pooling = "attention" if self.version == 7 else "last"
+        self.static_in_score = self.spec["static_in_score"]
+        self.static_in_gat = self.spec["static_in_gat"]
+        self.dynamic_in_score = self.spec["dynamic_in_score"]
+        self.temporal_pooling = self.spec["temporal_pooling"]
+        self.has_pre_gat = self.spec["has_pre_gat"]
+        self.score_kind = self.spec["score_kind"]
         edge_features = None
-        if self.static_in_score:
+        if self.static_in_score or self.static_in_gat:
             edge_features = np.asarray(data.graph.get("edge_feats"), dtype=np.float32)
             if edge_features.shape != (len(src), 8) or not np.isfinite(edge_features).all():
-                raise ValueError("M4--M7 require finite training-only edge features [E,8].")
+                raise ValueError(f"{name} requires finite training-only edge features [E,8].")
             self.register_buffer("edge_features", torch.as_tensor(edge_features))
-        self.gat = DirectedGAT(self.input_features, gat_hidden, self.n_nodes, src, dst,
-                               edge_features if self.static_in_gat else None, slope)
-        self.encoder_kind = "mlp" if self.version == 1 else "tcn"
-        if self.version == 1:
-            self.temporal_pooling = "history_mlp"
+        if self.has_pre_gat:
+            self.gat = DirectedGAT(self.spatial_input_features, gat_hidden, self.n_nodes, src, dst,
+                                   edge_features if self.static_in_gat else None, slope)
+        else:
+            # No neighborhood mixing, but retain the GAT output width and
+            # pointwise nonlinearity for the otherwise unchanged temporal path.
+            self.gat = nn.Sequential(nn.Linear(self.spatial_input_features, gat_hidden, bias=False),
+                                     nn.ELU())
+        self.encoder_kind = self.spec["encoder_kind"]
+        if self.encoder_kind == "mlp":
             self.encoder = nn.Sequential(nn.Linear(self.window * gat_hidden, hidden), nn.ReLU(),
                                          nn.Linear(hidden, hidden), nn.ReLU())
             self.representation_projection = nn.Identity()
         else:
-            self.encoder = FullSequenceCausalTCN(gat_hidden, tcn_hidden,
-                kernel_size=int(config.get("tcn_kernel_size", 3)),
-                dilations=config.get("tcn_dilations", [1, 2, 4]))
-            if self.encoder.receptive_field < self.window:
-                raise ValueError("TCN receptive field must cover W for every M2--M7 version.")
+            if self.encoder_kind == "tcn":
+                self.encoder = FullSequenceCausalTCN(gat_hidden, tcn_hidden,
+                    kernel_size=int(config.get("tcn_kernel_size", 3)),
+                    dilations=config.get("tcn_dilations", [1, 2, 4]))
+                if self.encoder.receptive_field < self.window:
+                    raise ValueError("TCN receptive field must cover W for every TCN model.")
+            else:
+                # Operates independently at each historical position; attention
+                # still pools across W, so this is no convolution, not no time.
+                self.encoder = nn.Sequential(nn.Linear(gat_hidden, tcn_hidden), nn.ReLU())
             self.representation_projection = (nn.Identity() if tcn_hidden == hidden
                                                else nn.Linear(tcn_hidden, hidden))
-            if self.version == 7:
+            if self.temporal_pooling == "attention":
                 self.temporal_attention = nn.Sequential(nn.Linear(tcn_hidden, attention_hidden),
                                                         nn.Tanh(), nn.Linear(attention_hidden, 1))
         gate_inputs = 4 * hidden + (8 if self.static_in_score else 0) + (6 if self.dynamic_in_score else 0)
-        self.gate = nn.Sequential(nn.Linear(gate_inputs, gate_hidden), nn.ReLU(), nn.Linear(gate_hidden, 1))
-        self.message = nn.Linear(hidden, self.msg_dim, bias=False)
+        self.gate = None
+        if self.score_kind == "dynamic":
+            self.gate = nn.Sequential(nn.Linear(gate_inputs, gate_hidden), nn.ReLU(), nn.Linear(gate_hidden, 1))
+        elif self.score_kind == "static":
+            self.gate_logits = nn.Parameter(torch.zeros(len(src)))
+        self.message = None if self.score_kind == "none" else nn.Linear(hidden, self.msg_dim, bias=False)
         self.head = nn.Sequential(nn.Linear(hidden + self.msg_dim, head_hidden), nn.ReLU(),
                                   nn.Linear(head_hidden, self.horizon))
         nn.init.zeros_(self.head[-1].weight)
         nn.init.zeros_(self.head[-1].bias)
 
     def temporal_sequence(self, history):
-        if self.version == 1:
+        if self.encoder_kind == "mlp":
             raise ValueError("M1 uses a history MLP and has no TCN sequence.")
-        return self.encoder(self.gat(history))
+        return self.encoder(self.gat(history[..., :self.spatial_input_features]))
 
     def encode(self, history, return_attention=False):
         if history.ndim != 4 or tuple(history.shape[1:]) != (self.window, self.n_nodes, self.input_features):
             raise ValueError("History shape differs from the configured W, N, or feature channels.")
         attention = None
-        if self.version == 1:
-            spatial = self.gat(history)
+        if self.encoder_kind == "mlp":
+            spatial = self.gat(history[..., :self.spatial_input_features])
             batch, window, nodes, channels = spatial.shape
             representation = self.encoder(spatial.permute(0, 2, 1, 3).reshape(batch, nodes, window * channels))
         else:
             sequence = self.temporal_sequence(history)
-            if self.version == 7:
+            if self.temporal_pooling == "attention":
                 attention = torch.softmax(self.temporal_attention(sequence).squeeze(-1), dim=1)
                 representation = (sequence * attention.unsqueeze(-1)).sum(dim=1)
             else:
@@ -244,13 +261,19 @@ class DeigTCNModule(nn.Module):
         return (representation, attention) if return_attention else representation
 
     def raw_scores(self, representation, history=None):
+        if self.score_kind == "none":
+            return None
+        if self.score_kind == "fixed":
+            return representation.new_ones((len(representation), len(self.src)))
+        if self.score_kind == "static":
+            return torch.sigmoid(self.gate_logits).unsqueeze(0).expand(len(representation), -1)
         zi, zj = representation[:, self.src], representation[:, self.dst]
         pieces = [zi, zj, zi - zj, zi * zj]
         if self.static_in_score:
             pieces.append(self.edge_features.unsqueeze(0).expand(len(representation), -1, -1))
         if self.dynamic_in_score:
             if history is None:
-                raise ValueError("M6--M7 scores also require their history window.")
+                raise ValueError(f"{self.name} scores also require their full history window.")
             pieces.append(dynamic_edge_features(history, self.src, self.dst, self.max_lag))
         return torch.sigmoid(self.gate(torch.cat(pieces, dim=-1))).squeeze(-1)
 
@@ -260,11 +283,13 @@ class DeigTCNModule(nn.Module):
     def forward(self, history, last, edge_mask=None):
         representation, temporal_attention = self.encode(history, return_attention=True)
         scores = self.raw_scores(representation, history)
-        masked = scores if edge_mask is None else scores * edge_mask
-        effective = masked / self.degree[self.dst].unsqueeze(0)
         aggregation = representation.new_zeros((len(history), self.n_nodes, self.msg_dim))
-        messages = self.message(representation)[:, self.src] * effective.unsqueeze(-1)
-        aggregation.index_add_(1, self.dst, messages)
+        effective = None
+        if scores is not None:
+            masked = scores if edge_mask is None else scores * edge_mask
+            effective = masked / self.degree[self.dst].unsqueeze(0)
+            messages = self.message(representation)[:, self.src] * effective.unsqueeze(-1)
+            aggregation.index_add_(1, self.dst, messages)
         residual = self.head(torch.cat([representation, aggregation], dim=-1))
         return {"prediction": last.unsqueeze(-1) + residual, "edge_scores": scores,
                 "effective_weight": effective, "aggregation": aggregation,
@@ -276,8 +301,7 @@ class DeigTCNForecaster(GatedForecaster):
 
     def __init__(self, name, data, config=None, seed=0):
         name = str(name).lower()
-        if name not in {f"m{i}" for i in range(1, 8)}:
-            raise ValueError("DEIG construction model name must be m1 through m7.")
+        spec = resolve_model_spec(name)
         self.name, self.config, self.seed = name, dict(config or {}), int(seed)
         valid_keys = {"encoder_hidden", "gat_hidden", "tcn_hidden", "msg_dim", "head_hidden",
                       "gate_hidden", "tcn_kernel_size", "tcn_dilations", "temporal_attention_hidden",
@@ -289,23 +313,36 @@ class DeigTCNForecaster(GatedForecaster):
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.seed)
             self.module = DeigTCNModule(name, data, self.config).to(self.device)
-        self.capabilities = {"supports_ranking": True, "supports_intervention": True,
-                             "score_kind": "dynamic", "intervention_scope": "post_message_only",
-                             "has_pre_gat": True, "gat_self_path": True,
+        has_message = spec["score_kind"] != "none"
+        intervention_scope = "post_message_only" if has_message else None
+        self.capabilities = {"supports_ranking": spec["score_kind"] in {"static", "dynamic"},
+                             "supports_intervention": has_message,
+                             "score_kind": spec["score_kind"], "intervention_scope": intervention_scope,
+                             "has_pre_gat": self.module.has_pre_gat, "gat_self_path": self.module.has_pre_gat,
                              "message_normalization": "fixed_candidate_indegree"}
         self.parameter_count = sum(parameter.numel() for parameter in self.module.parameters())
         self.construction_metadata = {
             "version": name.upper(), "input_features": self.module.input_features,
             "feature_channels": list(FULL_FEATURE_CHANNELS if self.module.input_features == 7 else ["level"]),
-            "pre_spatial": "edge_aware_gat" if self.module.static_in_gat else "ordinary_gat",
+            "raw_history_features": self.module.input_features,
+            "raw_history_feature_channels": list(FULL_FEATURE_CHANNELS if self.module.input_features == 7 else ["level"]),
+            "spatial_input_features": self.module.spatial_input_features,
+            "spatial_feature_channels": list(FULL_FEATURE_CHANNELS if self.module.spatial_input_features == 7 else ["level"]),
+            "parent_model": spec["parent_model"], "ablation": spec["ablation"],
+            "pre_spatial": ("node_local_projection" if not self.module.has_pre_gat else
+                            "edge_aware_gat" if self.module.static_in_gat else "ordinary_gat"),
             "temporal_encoder": self.module.encoder_kind,
             "temporal_pooling": self.module.temporal_pooling,
             "tcn_receptive_field": getattr(self.module.encoder, "receptive_field", None),
             "static_edge_in_score": self.module.static_in_score,
             "static_edge_in_gat": self.module.static_in_gat,
             "dynamic_edge_in_score": self.module.dynamic_in_score,
+            "intent_score_kind": spec["score_kind"],
+            "has_intent_message": has_message,
+            "prediction_head_input": "representation_concat_message_or_zero",
             "message_normalization": "fixed_candidate_indegree",
-            "intervention_scope": "post_message_only",
+            "message_normalization_active": has_message,
+            "intervention_scope": intervention_scope,
             "dynamic_features_method": "history_residual_max_positive_lag_pearson_no_shrinkage"
                 if self.module.dynamic_in_score else None,
         }

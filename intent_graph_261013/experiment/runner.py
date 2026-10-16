@@ -54,17 +54,13 @@ def code_metadata():
 
 def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_overrides=None,
               training_overrides=None, evaluation_overrides=None, model_overrides=None,
-              out=None, make_plots=True, prepare_only=False):
+              out=None, make_plots=True, prepare_only=False, strict_ablation=False):
     started = time.perf_counter()
     experiments = json.loads(Path(experiments_path).read_text(encoding="utf-8"))
     if set(experiments) != {"models", "training", "evaluation"}:
         raise ValueError("Experiment config must contain only models, training, evaluation")
-    configured_models = {}
-    for requested_name, model_config in experiments["models"].items():
-        name = canonical_model_name(requested_name)
-        if name in configured_models:
-            raise ValueError(f"Duplicate aliases for {name}; B6 and M0 must share one run")
-        configured_models[name] = model_config
+    from .ablation import resolve_model_configs, validate_strict_ablation
+    configured_models = resolve_model_configs(experiments["models"])
     selected = [canonical_model_name(name) for name in models] if models is not None else list(configured_models)
     if not selected or len(set(selected)) != len(selected) or any(name not in MODEL_NAMES for name in selected):
         raise ValueError(f"Choose unique model names from {MODEL_NAMES}")
@@ -79,6 +75,8 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
     if not active_seeds or len(set(active_seeds)) != len(active_seeds) or any(isinstance(seed, bool) or not isinstance(seed, int) or seed < 0 for seed in active_seeds):
         raise ValueError("Training seeds must be unique nonnegative integers")
     training["seeds"] = active_seeds
+    design = (validate_strict_ablation(configured_models, selected, training, model_overrides)
+              if strict_ablation else None)
     evaluation = validate_evaluation_config({**experiments["evaluation"], **(evaluation_overrides or {})})
     data = prepare_data(protocol_path, data_overrides)
     print(f"[data] protocol={data.protocol_id}; T={data.metadata['T']}; N={data.metadata['N']}; "
@@ -86,6 +84,9 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
     destination = Path(out).resolve() if out is not None else ROOT / "outputs"
     suite = destination / datetime.now().strftime("suite_%Y%m%d_%H%M%S_%f")
     suite.mkdir(parents=True, exist_ok=False)
+    if design is not None:
+        write_json(suite / "experiment_design.json", {**design, "models": selected,
+                   "training": training, "evaluation": evaluation})
     write_json(suite / "protocol.json", data.protocol)
     write_json(suite / "data_metadata.json", data.metadata)
     np.savez_compressed(suite / "suite_data.npz", mean=data.mean, std=data.std,
@@ -148,6 +149,8 @@ def run_suite(protocol_path, experiments_path, models=None, seeds=None, data_ove
                        "fit": fit, "metrics": result["metrics"], "graph_metrics": result["graph_metrics"],
                        "capabilities": model.capabilities,
                        "construction": getattr(model, "construction_metadata", None),
+                       "experiment_design": ({**design, "ablation_role": design["model_roles"][name]}
+                                             if design is not None else None),
                        "data": {**model_data.metadata, "step_minutes": data.protocol["step_minutes"]},
                        "environment": environment, "code_version": code}
             extension = {"gradient": ".pt", "closed_form": ".npz", "none": ".json"}[model.kind]

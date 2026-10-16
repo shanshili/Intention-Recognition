@@ -11,12 +11,12 @@ from experiment.runner import run_suite
 ROOT = Path(__file__).resolve().parent
 
 
-def main(argv=None):
+def main(argv=None, *, strict_ablation=False):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--protocol", type=Path, default=ROOT / "configs/protocol_dev.json")
     parser.add_argument("--experiments", type=Path, default=ROOT / "configs/experiments.json")
     parser.add_argument("--models", nargs="+", type=canonical_model_name, choices=MODEL_NAMES,
-                        help="Canonical names or B1-B6/M0-M7 aliases; M0 equals dynamic_gate")
+                        help="Canonical names, B1-B6/M0-M7 or M7 ablation aliases; M0 equals dynamic_gate")
     parser.add_argument("--seeds", nargs="+", type=int)
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"))
     parser.add_argument("--epochs", type=int)
@@ -59,7 +59,8 @@ def main(argv=None):
         evaluation["sequence_plots"] = json.loads(args.sequence_plots.read_text(encoding="utf-8"))
     model = {} if args.encoder is None else {"encoder": args.encoder}
     return run_suite(args.protocol, args.experiments, args.models, args.seeds, data,
-                     training, evaluation, model, args.out, not args.no_plots, args.prepare_only)
+                     training, evaluation, model, args.out, not args.no_plots, args.prepare_only,
+                     strict_ablation=strict_ablation)
 
 
 if __name__ == "__main__":

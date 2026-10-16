@@ -302,12 +302,15 @@ def _draw(ax, data, row, keep, norm, settings, panel=False):
                color="0.85", edgecolors="0.5", linewidths=0.5, zorder=3)
     for edge in np.flatnonzero(drawn):
         i, j = edges[edge]
-        strength = float(norm(scores[edge]))
+        # float32 LogNorm may round a clipped endpoint slightly above one.
+        # Bound the display value before deriving alpha/linewidth; raw gates
+        # and numerical evaluation artifacts remain unchanged.
+        strength = float(np.clip(float(norm(scores[edge])), 0.0, 1.0))
         ax.add_patch(FancyArrowPatch(coords[i], coords[j], arrowstyle="-|>",
                                     mutation_scale=settings.arrow_size,
                                     connectionstyle="arc3,rad=0.08", color=cmap(strength),
                                     linewidth=settings.min_linewidth + (settings.max_linewidth - settings.min_linewidth) * strength,
-                                    alpha=0.15 + 0.85 * strength, zorder=2))
+                                    alpha=float(np.clip(0.15 + 0.85 * strength, 0.0, 1.0)), zorder=2))
     if settings.node_labels != "none":
         labels = data.node_ids if settings.node_labels == "id" and data.node_ids is not None else np.arange(len(coords))
         for label, (x, y) in zip(labels, coords):
